@@ -1,0 +1,193 @@
+{
+  "format": "blueprint-studio",
+  "schemaVersion": "0.1.0",
+  "applicationVersion": "0.1.0",
+  "project": {
+    "id": "project-commercial-lending",
+    "name": "Commercial Lending Transformation",
+    "description": "Example Blueprint Studio project.",
+    "organization": "Example Bank",
+    "businessUnit": "Commercial",
+    "clouds": [
+      "Sales Cloud",
+      "Financial Services Cloud"
+    ],
+    "status": "active",
+    "tags": [
+      "commercial-lending"
+    ],
+    "createdAt": "2026-07-20T20:00:00Z",
+    "updatedAt": "2026-07-20T20:00:00Z"
+  },
+  "solutions": [
+    {
+      "id": "solution-borrowing-structure",
+      "projectId": "project-commercial-lending",
+      "name": "Borrowing Structure",
+      "description": "Model relationships among accounts, borrowing structures, and facilities.",
+      "versions": [
+        {
+          "id": "version-borrowing-structure-001",
+          "solutionId": "solution-borrowing-structure",
+          "number": "0.1",
+          "name": "Initial design",
+          "status": "draft",
+          "discovery": {
+            "format": "html",
+            "content": "<h1>Borrowing Structure</h1><p>Design a reusable structure connecting commercial relationships and facilities.</p>",
+            "assetIds": []
+          },
+          "requirements": [],
+          "metadata": {
+            "objects": [
+              {
+                "id": "object-account",
+                "origin": {
+                  "type": "created"
+                },
+                "label": "Account",
+                "pluralLabel": "Accounts",
+                "apiName": "Account",
+                "kind": "standard",
+                "description": "Salesforce account.",
+                "governance": {
+                  "businessOwner": "Commercial Banking",
+                  "tags": [],
+                  "dataClassification": "internal"
+                }
+              },
+              {
+                "id": "object-borrowing-structure",
+                "origin": {
+                  "type": "created"
+                },
+                "label": "Borrowing Structure",
+                "pluralLabel": "Borrowing Structures",
+                "apiName": "Borrowing_Structure__c",
+                "kind": "custom",
+                "description": "Groups related borrowing entities and facilities.",
+                "allowReports": true,
+                "allowActivities": false,
+                "deploymentStatus": "in-development",
+                "governance": {
+                  "businessOwner": "Commercial Credit",
+                  "technicalOwner": "Salesforce COE",
+                  "businessPurpose": "Represent the relationship between borrowers and facilities.",
+                  "tags": [
+                    "lending"
+                  ],
+                  "dataClassification": "confidential"
+                }
+              }
+            ],
+            "fields": [
+              {
+                "id": "field-borrowing-structure-status",
+                "objectId": "object-borrowing-structure",
+                "origin": {
+                  "type": "created"
+                },
+                "label": "Status",
+                "apiName": "Status__c",
+                "dataType": "picklist",
+                "description": "Current lifecycle status of the borrowing structure.",
+                "helpText": "Select the current status.",
+                "required": true,
+                "globalValueSetId": "gvs-lifecycle-status",
+                "governance": {
+                  "businessOwner": "Commercial Credit",
+                  "tags": [],
+                  "dataClassification": "internal"
+                }
+              }
+            ],
+            "relationships": [],
+            "globalValueSets": [
+              {
+                "id": "gvs-lifecycle-status",
+                "label": "Lifecycle Status",
+                "apiName": "Lifecycle_Status",
+                "description": "Reusable lifecycle states.",
+                "sorted": false,
+                "values": [
+                  {
+                    "id": "pv-draft",
+                    "label": "Draft",
+                    "apiValue": "Draft",
+                    "active": true,
+                    "default": true
+                  },
+                  {
+                    "id": "pv-active",
+                    "label": "Active",
+                    "apiValue": "Active",
+                    "active": true,
+                    "default": false
+                  }
+                ],
+                "governance": {
+                  "tags": []
+                }
+              }
+            ],
+            "customLabels": [],
+            "recordTypes": [],
+            "validationRules": []
+          },
+          "experience": {
+            "layouts": []
+          },
+          "security": {
+            "profiles": [],
+            "permissionSets": [],
+            "permissionSetGroups": [],
+            "fieldAccess": []
+          },
+          "decisions": [],
+          "healthRuleOverrides": [],
+          "createdAt": "2026-07-20T20:00:00Z",
+          "updatedAt": "2026-07-20T20:00:00Z"
+        }
+      ],
+      "createdAt": "2026-07-20T20:00:00Z",
+      "updatedAt": "2026-07-20T20:00:00Z"
+    }
+  ],
+  "settings": {
+    "namingStrategy": "hybrid",
+    "autoGenerateApiNames": true,
+    "healthRules": [
+      {
+        "id": "rule-field-description",
+        "name": "Field description required",
+        "appliesTo": "field",
+        "severity": "warning",
+        "enabled": true,
+        "ruleType": "required-property",
+        "configuration": {
+          "property": "description"
+        },
+        "message": "Add a field description."
+      },
+      {
+        "id": "rule-field-helptext",
+        "name": "Field help text recommended",
+        "appliesTo": "field",
+        "severity": "info",
+        "enabled": true,
+        "ruleType": "recommended-property",
+        "configuration": {
+          "property": "helpText"
+        },
+        "message": "Consider adding help text."
+      }
+    ]
+  },
+  "templates": [],
+  "audit": {
+    "createdAt": "2026-07-20T20:00:00Z",
+    "updatedAt": "2026-07-20T20:00:00Z",
+    "createdBy": "Alec"
+  },
+  "extensions": {}
+}

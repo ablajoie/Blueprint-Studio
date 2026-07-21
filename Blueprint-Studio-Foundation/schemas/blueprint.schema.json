@@ -1,0 +1,661 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://blueprint-studio.dev/schemas/blueprint.schema.json",
+  "title": "Blueprint Studio Project",
+  "type": "object",
+  "required": [
+    "format",
+    "schemaVersion",
+    "applicationVersion",
+    "project",
+    "solutions",
+    "settings",
+    "templates",
+    "audit",
+    "extensions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "blueprint-studio"
+    },
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "applicationVersion": {
+      "type": "string"
+    },
+    "project": {
+      "$ref": "#/$defs/project"
+    },
+    "solutions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/solution"
+      }
+    },
+    "settings": {
+      "$ref": "#/$defs/settings"
+    },
+    "templates": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "audit": {
+      "$ref": "#/$defs/audit"
+    },
+    "extensions": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "minLength": 8
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "audit": {
+      "type": "object",
+      "required": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "createdAt": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "updatedBy": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "project": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "clouds",
+        "status",
+        "tags",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "organization": {
+          "type": "string"
+        },
+        "businessUnit": {
+          "type": "string"
+        },
+        "clouds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "status": {
+          "enum": [
+            "active",
+            "archived"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/timestamp"
+        }
+      },
+      "additionalProperties": false
+    },
+    "healthRule": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "appliesTo",
+        "severity",
+        "enabled",
+        "ruleType",
+        "configuration",
+        "message"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "appliesTo": {
+          "enum": [
+            "project",
+            "solution",
+            "object",
+            "field",
+            "layout",
+            "security"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ]
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "ruleType": {
+          "type": "string"
+        },
+        "configuration": {
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "settings": {
+      "type": "object",
+      "required": [
+        "namingStrategy",
+        "autoGenerateApiNames",
+        "healthRules"
+      ],
+      "properties": {
+        "namingStrategy": {
+          "enum": [
+            "salesforce-first",
+            "business-first",
+            "hybrid"
+          ]
+        },
+        "autoGenerateApiNames": {
+          "type": "boolean"
+        },
+        "healthRules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/healthRule"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "solution": {
+      "type": "object",
+      "required": [
+        "id",
+        "projectId",
+        "name",
+        "versions",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "projectId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "versions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/version"
+          }
+        },
+        "createdAt": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/timestamp"
+        }
+      },
+      "additionalProperties": false
+    },
+    "version": {
+      "type": "object",
+      "required": [
+        "id",
+        "solutionId",
+        "number",
+        "status",
+        "discovery",
+        "requirements",
+        "metadata",
+        "experience",
+        "security",
+        "decisions",
+        "healthRuleOverrides",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "solutionId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "number": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "discovery",
+            "draft",
+            "review",
+            "ready",
+            "archived"
+          ]
+        },
+        "basedOnVersionId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "discovery": {
+          "type": "object",
+          "required": [
+            "format",
+            "content",
+            "assetIds"
+          ],
+          "properties": {
+            "format": {
+              "enum": [
+                "html",
+                "json-rich-text"
+              ]
+            },
+            "content": {},
+            "assetIds": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/uuid"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        },
+        "experience": {
+          "$ref": "#/$defs/experience"
+        },
+        "security": {
+          "$ref": "#/$defs/security"
+        },
+        "decisions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "healthRuleOverrides": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "createdAt": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/timestamp"
+        }
+      },
+      "additionalProperties": false
+    },
+    "governance": {
+      "type": "object",
+      "required": [
+        "tags"
+      ],
+      "properties": {
+        "businessOwner": {
+          "type": "string"
+        },
+        "technicalOwner": {
+          "type": "string"
+        },
+        "businessPurpose": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dataClassification": {
+          "enum": [
+            "public",
+            "internal",
+            "confidential",
+            "restricted"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "object": {
+      "type": "object",
+      "required": [
+        "id",
+        "origin",
+        "label",
+        "kind",
+        "governance"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "origin": {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "created",
+                "imported",
+                "ai-generated"
+              ]
+            },
+            "sourceId": {
+              "type": "string"
+            },
+            "importedAt": {
+              "$ref": "#/$defs/timestamp"
+            }
+          },
+          "additionalProperties": false
+        },
+        "label": {
+          "type": "string"
+        },
+        "pluralLabel": {
+          "type": "string"
+        },
+        "apiName": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "standard",
+            "custom",
+            "external",
+            "big-object",
+            "platform-event",
+            "custom-metadata-type"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "recordName": {
+          "type": "object"
+        },
+        "allowReports": {
+          "type": "boolean"
+        },
+        "allowActivities": {
+          "type": "boolean"
+        },
+        "deploymentStatus": {
+          "enum": [
+            "in-development",
+            "deployed"
+          ]
+        },
+        "governance": {
+          "$ref": "#/$defs/governance"
+        }
+      },
+      "additionalProperties": false
+    },
+    "field": {
+      "type": "object",
+      "required": [
+        "id",
+        "objectId",
+        "origin",
+        "label",
+        "dataType",
+        "required",
+        "governance"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "objectId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "origin": {
+          "type": "object"
+        },
+        "label": {
+          "type": "string"
+        },
+        "apiName": {
+          "type": "string"
+        },
+        "dataType": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "helpText": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "unique": {
+          "type": "boolean"
+        },
+        "externalId": {
+          "type": "boolean"
+        },
+        "defaultValue": {},
+        "length": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "precision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "scale": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "formula": {
+          "type": "string"
+        },
+        "referenceToObjectId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "localPicklistValues": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "globalValueSetId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "governance": {
+          "$ref": "#/$defs/governance"
+        }
+      },
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "required": [
+        "objects",
+        "fields",
+        "relationships",
+        "globalValueSets",
+        "customLabels",
+        "recordTypes",
+        "validationRules"
+      ],
+      "properties": {
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/object"
+          }
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/field"
+          }
+        },
+        "relationships": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "globalValueSets": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "customLabels": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "recordTypes": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "validationRules": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "experience": {
+      "type": "object",
+      "required": [
+        "layouts"
+      ],
+      "properties": {
+        "layouts": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "security": {
+      "type": "object",
+      "required": [
+        "profiles",
+        "permissionSets",
+        "permissionSetGroups",
+        "fieldAccess"
+      ],
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "permissionSets": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "permissionSetGroups": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "fieldAccess": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
