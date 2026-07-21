@@ -8,7 +8,7 @@ A Salesforce professional can create a project and solution, capture discovery n
 
 ## Application foundation
 
-The repository now includes a production-oriented React application shell with strict TypeScript, Vite, Tailwind CSS, React Router, Zustand, Dexie, ESLint, Prettier, and Vitest. The first shell contains the persistent header, Solution Explorer, workspace, and inspector regions; product workflows intentionally come later.
+The repository includes a production-oriented React application with strict TypeScript, Vite, Tailwind CSS, React Router, Zustand, Dexie, ESLint, Prettier, and Vitest. The current walking skeleton supports project, solution, object, and type-aware field creation with local persistence, a live Solution Explorer, and contextual inspector.
 
 ### Local setup
 

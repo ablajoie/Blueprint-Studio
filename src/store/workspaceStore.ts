@@ -1,9 +1,11 @@
 import { create } from 'zustand'
 import type { BlueprintFile } from '../domain/blueprint'
 import {
+  addField,
   addObject,
   addSolution,
   createBlueprint,
+  type NewFieldInput,
   type NewObjectInput,
   type NewProjectInput,
   type NewSolutionInput,
@@ -16,6 +18,7 @@ interface WorkspaceState {
   status: 'idle' | 'loading' | 'ready' | 'saving' | 'error'
   blueprint: BlueprintFile | null
   selectedSolutionId: string | null
+  selectedObjectId: string | null
   selectedArtifactId: string | null
   activeView: WorkspaceView
   errorMessage: string | null
@@ -23,8 +26,11 @@ interface WorkspaceState {
   createProject: (input: NewProjectInput) => Promise<void>
   createSolution: (input: NewSolutionInput) => Promise<void>
   createObject: (input: NewObjectInput) => Promise<void>
+  createField: (input: Omit<NewFieldInput, 'objectId'>) => Promise<void>
   openView: (view: WorkspaceView) => void
   selectSolution: (id: string) => void
+  openObject: (id: string) => void
+  showObjectList: () => void
   selectArtifact: (id: string | null) => void
   clearError: () => void
 }
@@ -33,6 +39,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   status: 'idle',
   blueprint: null,
   selectedSolutionId: null,
+  selectedObjectId: null,
   selectedArtifactId: null,
   activeView: 'overview',
   errorMessage: null,
@@ -43,6 +50,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       set({
         blueprint,
         selectedSolutionId: blueprint?.solutions[0]?.id ?? null,
+        selectedObjectId: null,
         status: 'ready',
       })
     } catch {
@@ -57,6 +65,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       set({
         blueprint,
         selectedSolutionId: null,
+        selectedObjectId: null,
         selectedArtifactId: null,
         activeView: 'overview',
         status: 'ready',
@@ -75,6 +84,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       set({
         blueprint: result.blueprint,
         selectedSolutionId: result.solutionId,
+        selectedObjectId: null,
         selectedArtifactId: null,
         activeView: 'start',
         status: 'ready',
@@ -92,6 +102,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       await projectRepository.save(result.blueprint)
       set({
         blueprint: result.blueprint,
+        selectedObjectId: result.objectId,
         selectedArtifactId: result.objectId,
         activeView: 'metadata',
         status: 'ready',
@@ -100,11 +111,45 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       set({ status: 'error', errorMessage: 'Your object could not be saved. Please try again.' })
     }
   },
+  createField: async (input) => {
+    const state = useWorkspaceStore.getState()
+    if (!state.blueprint || !state.selectedSolutionId || !state.selectedObjectId) return
+    set({ status: 'saving', errorMessage: null })
+    try {
+      const result = addField(state.blueprint, state.selectedSolutionId, {
+        ...input,
+        objectId: state.selectedObjectId,
+      })
+      await projectRepository.save(result.blueprint)
+      set({
+        blueprint: result.blueprint,
+        selectedArtifactId: result.fieldId,
+        activeView: 'metadata',
+        status: 'ready',
+      })
+    } catch (error) {
+      set({
+        status: 'error',
+        errorMessage: error instanceof Error ? error.message : 'Your field could not be saved.',
+      })
+    }
+  },
   openView: (activeView) => {
     set({ activeView })
   },
   selectSolution: (selectedSolutionId) => {
-    set({ selectedSolutionId, selectedArtifactId: null, activeView: 'overview' })
+    set({
+      selectedSolutionId,
+      selectedObjectId: null,
+      selectedArtifactId: null,
+      activeView: 'overview',
+    })
+  },
+  openObject: (selectedObjectId) => {
+    set({ selectedObjectId, selectedArtifactId: selectedObjectId, activeView: 'metadata' })
+  },
+  showObjectList: () => {
+    set({ selectedObjectId: null, selectedArtifactId: null, activeView: 'metadata' })
   },
   selectArtifact: (selectedArtifactId) => {
     set({ selectedArtifactId })

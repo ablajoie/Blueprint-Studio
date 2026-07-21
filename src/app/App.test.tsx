@@ -9,6 +9,7 @@ describe('App', () => {
       status: 'ready',
       blueprint: null,
       selectedSolutionId: null,
+      selectedObjectId: null,
       selectedArtifactId: null,
       activeView: 'overview',
       errorMessage: null,

@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import type { BlueprintFile, SalesforceObject, Solution } from '../../domain/blueprint'
+import type { BlueprintFile, Solution } from '../../domain/blueprint'
 import { CreateObjectDialog } from '../metadata/CreateObjectDialog'
+import { MetadataWorkspace } from '../metadata/MetadataWorkspace'
 import { CreateProjectDialog } from '../projects/CreateProjectDialog'
 import { CreateSolutionDialog } from '../solutions/CreateSolutionDialog'
 import { useWorkspaceStore } from '../../store/workspaceStore'
@@ -261,117 +262,6 @@ function SolutionStart({ solution }: { solution: Solution }) {
         </div>
       </div>
     </section>
-  )
-}
-
-function MetadataWorkspace({
-  solution,
-  onCreateObject,
-}: {
-  solution: Solution
-  onCreateObject: () => void
-}) {
-  const selectArtifact = useWorkspaceStore((state) => state.selectArtifact)
-  const selectedArtifactId = useWorkspaceStore((state) => state.selectedArtifactId)
-  const version = solution.versions.at(-1)
-  const objects = version?.metadata.objects ?? []
-
-  return (
-    <section className="mx-auto max-w-6xl p-8">
-      <div className="flex items-start justify-between gap-6">
-        <div>
-          <p className="text-sm font-semibold text-blue-700">
-            {solution.name} · Version {version?.number}
-          </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Metadata</h1>
-          <p className="mt-3 text-slate-600">
-            Model the Salesforce building blocks this solution needs.
-          </p>
-        </div>
-        <button className="button-primary" onClick={onCreateObject}>
-          New Object
-        </button>
-      </div>
-
-      <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <div>
-            <h2 className="font-semibold text-slate-950">Objects</h2>
-            <p className="mt-0.5 text-sm text-slate-500">
-              {objects.length} modeled in this design version
-            </p>
-          </div>
-        </div>
-        {objects.length ? (
-          <ObjectTable
-            objects={objects}
-            selectedId={selectedArtifactId}
-            onSelect={selectArtifact}
-          />
-        ) : (
-          <div className="px-6 py-14 text-center">
-            <div className="mx-auto grid size-12 place-items-center rounded-xl bg-blue-50 text-xl text-blue-700">
-              ▦
-            </div>
-            <h2 className="mt-4 text-lg font-semibold">Let’s add your first object</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
-              Start with the standard, custom, external, or configuration object at the center of
-              this solution.
-            </p>
-            <button className="button-primary mt-5" onClick={onCreateObject}>
-              New Object
-            </button>
-          </div>
-        )}
-      </div>
-    </section>
-  )
-}
-
-function ObjectTable({
-  objects,
-  selectedId,
-  onSelect,
-}: {
-  objects: SalesforceObject[]
-  selectedId: string | null
-  onSelect: (id: string) => void
-}) {
-  return (
-    <table className="w-full text-left text-sm">
-      <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-        <tr>
-          <th className="px-6 py-3 font-semibold">Label</th>
-          <th className="px-6 py-3 font-semibold">API name</th>
-          <th className="px-6 py-3 font-semibold">Type</th>
-          <th className="px-6 py-3 text-right font-semibold">Fields</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-slate-100">
-        {objects.map((object) => (
-          <tr
-            key={object.id}
-            className={object.id === selectedId ? 'bg-blue-50' : 'hover:bg-slate-50'}
-          >
-            <td className="p-0">
-              <button
-                className="w-full px-6 py-4 text-left font-semibold text-slate-900"
-                onClick={() => {
-                  onSelect(object.id)
-                }}
-              >
-                {object.label}
-              </button>
-            </td>
-            <td className="px-6 py-4 font-mono text-xs text-slate-600">{object.apiName}</td>
-            <td className="px-6 py-4 capitalize text-slate-600">
-              {object.kind.replaceAll('-', ' ')}
-            </td>
-            <td className="px-6 py-4 text-right text-slate-500">0</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
   )
 }
 

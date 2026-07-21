@@ -7,3 +7,4 @@
 - Copado Integration
 - Data Cloud mapping
 - Template marketplace
+- Standard Metadata Starter Packs by Salesforce cloud

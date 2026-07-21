@@ -17,6 +17,7 @@ describe('workspaceStore persistence', () => {
       status: 'idle',
       blueprint: null,
       selectedSolutionId: null,
+      selectedObjectId: null,
       selectedArtifactId: null,
       activeView: 'overview',
       errorMessage: null,
@@ -49,5 +50,46 @@ describe('workspaceStore persistence', () => {
       status: 'ready',
       blueprint: { project: { id: blueprint.project.id, name: 'Restored Project' } },
     })
+  })
+
+  it('saves a field into the selected object', async () => {
+    vi.mocked(projectRepository.save).mockResolvedValue()
+    await useWorkspaceStore.getState().createProject({
+      name: 'Field Design',
+      description: '',
+      clouds: [],
+    })
+    await useWorkspaceStore.getState().createSolution({ name: 'Core Model', description: '' })
+    await useWorkspaceStore.getState().createObject({
+      label: 'Facility',
+      pluralLabel: 'Facilities',
+      apiName: '',
+      kind: 'custom',
+      description: '',
+    })
+    await useWorkspaceStore.getState().createField({
+      label: 'Commitment Amount',
+      apiName: '',
+      dataType: 'currency',
+      description: 'Maximum committed facility amount',
+      helpText: '',
+      required: false,
+      defaultValue: '',
+      precision: 18,
+      scale: 2,
+      formula: '',
+      referenceToObjectId: '',
+      picklistValues: [],
+    })
+
+    const state = useWorkspaceStore.getState()
+    expect(state.status).toBe('ready')
+    expect(state.blueprint?.solutions[0]?.versions[0]?.metadata.fields[0]).toMatchObject({
+      label: 'Commitment Amount',
+      dataType: 'currency',
+      precision: 18,
+      scale: 2,
+    })
+    expect(projectRepository.save).toHaveBeenCalledTimes(4)
   })
 })

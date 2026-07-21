@@ -12,14 +12,18 @@ const futureSections = [
 export function SolutionExplorer() {
   const blueprint = useWorkspaceStore((state) => state.blueprint)
   const selectedSolutionId = useWorkspaceStore((state) => state.selectedSolutionId)
+  const selectedObjectId = useWorkspaceStore((state) => state.selectedObjectId)
   const activeView = useWorkspaceStore((state) => state.activeView)
   const openView = useWorkspaceStore((state) => state.openView)
   const selectSolution = useWorkspaceStore((state) => state.selectSolution)
+  const openObject = useWorkspaceStore((state) => state.openObject)
+  const showObjectList = useWorkspaceStore((state) => state.showObjectList)
   const selectArtifact = useWorkspaceStore((state) => state.selectArtifact)
   const selectedSolution = blueprint?.solutions.find(
     (solution) => solution.id === selectedSolutionId,
   )
   const objects = selectedSolution?.versions.at(-1)?.metadata.objects ?? []
+  const fields = selectedSolution?.versions.at(-1)?.metadata.fields ?? []
 
   return (
     <aside
@@ -78,7 +82,7 @@ export function SolutionExplorer() {
                       label="Metadata"
                       active={activeView === 'metadata'}
                       onClick={() => {
-                        openView('metadata')
+                        showObjectList()
                       }}
                     />
                     {objects.length ? (
@@ -86,14 +90,35 @@ export function SolutionExplorer() {
                         {objects.map((object) => (
                           <li key={object.id}>
                             <button
-                              className="w-full truncate rounded px-2 py-1 text-left text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-800"
+                              className={`w-full truncate rounded px-2 py-1 text-left text-xs ${
+                                object.id === selectedObjectId
+                                  ? 'bg-blue-50 font-semibold text-blue-800'
+                                  : 'text-slate-600 hover:bg-slate-50 hover:text-blue-800'
+                              }`}
                               onClick={() => {
-                                openView('metadata')
-                                selectArtifact(object.id)
+                                openObject(object.id)
                               }}
                             >
                               {object.label}
                             </button>
+                            {object.id === selectedObjectId ? (
+                              <ul className="ml-3 border-l border-slate-100 py-1 pl-2">
+                                {fields
+                                  .filter((field) => field.objectId === object.id)
+                                  .map((field) => (
+                                    <li key={field.id}>
+                                      <button
+                                        className="w-full truncate rounded px-2 py-1 text-left text-[11px] text-slate-500 hover:bg-slate-50 hover:text-blue-800"
+                                        onClick={() => {
+                                          selectArtifact(field.id)
+                                        }}
+                                      >
+                                        {field.label}
+                                      </button>
+                                    </li>
+                                  ))}
+                              </ul>
+                            ) : null}
                           </li>
                         ))}
                       </ul>
