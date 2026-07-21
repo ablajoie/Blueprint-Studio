@@ -345,11 +345,18 @@ function ObjectTable({
       </thead>
       <tbody className="divide-y divide-slate-100">
         {objects.map((object) => (
-          <tr key={object.id} className="hover:bg-slate-50">
+          <tr
+            key={object.id}
+            className="cursor-pointer hover:bg-slate-50"
+            onClick={() => {
+              onSelect(object.id)
+            }}
+          >
             <td className="p-0">
               <button
                 className="w-full px-6 py-4 text-left font-semibold text-slate-900"
-                onClick={() => {
+                onClick={(event) => {
+                  event.stopPropagation()
                   onSelect(object.id)
                 }}
               >
@@ -394,12 +401,21 @@ function FieldTable({
         {fields.map((field) => (
           <tr
             key={field.id}
-            className={field.id === selectedId ? 'bg-blue-50' : 'hover:bg-slate-50'}
+            aria-selected={field.id === selectedId}
+            className={
+              field.id === selectedId
+                ? 'cursor-pointer bg-blue-50'
+                : 'cursor-pointer hover:bg-slate-50'
+            }
+            onClick={() => {
+              onSelect(field.id)
+            }}
           >
             <td className="p-0">
               <button
                 className="w-full px-6 py-4 text-left font-semibold text-slate-900"
-                onClick={() => {
+                onClick={(event) => {
+                  event.stopPropagation()
                   onSelect(field.id)
                 }}
               >
