@@ -62,10 +62,7 @@
     },
     "audit": {
       "type": "object",
-      "required": [
-        "createdAt",
-        "updatedAt"
-      ],
+      "required": ["createdAt", "updatedAt"],
       "properties": {
         "createdAt": {
           "$ref": "#/$defs/timestamp"
@@ -84,15 +81,7 @@
     },
     "project": {
       "type": "object",
-      "required": [
-        "id",
-        "name",
-        "clouds",
-        "status",
-        "tags",
-        "createdAt",
-        "updatedAt"
-      ],
+      "required": ["id", "name", "clouds", "status", "tags", "createdAt", "updatedAt"],
       "properties": {
         "id": {
           "$ref": "#/$defs/uuid"
@@ -118,10 +107,7 @@
           "uniqueItems": true
         },
         "status": {
-          "enum": [
-            "active",
-            "archived"
-          ]
+          "enum": ["active", "archived"]
         },
         "tags": {
           "type": "array",
@@ -158,21 +144,10 @@
           "type": "string"
         },
         "appliesTo": {
-          "enum": [
-            "project",
-            "solution",
-            "object",
-            "field",
-            "layout",
-            "security"
-          ]
+          "enum": ["project", "solution", "object", "field", "layout", "security"]
         },
         "severity": {
-          "enum": [
-            "info",
-            "warning",
-            "error"
-          ]
+          "enum": ["info", "warning", "error"]
         },
         "enabled": {
           "type": "boolean"
@@ -191,18 +166,10 @@
     },
     "settings": {
       "type": "object",
-      "required": [
-        "namingStrategy",
-        "autoGenerateApiNames",
-        "healthRules"
-      ],
+      "required": ["namingStrategy", "autoGenerateApiNames", "healthRules"],
       "properties": {
         "namingStrategy": {
-          "enum": [
-            "salesforce-first",
-            "business-first",
-            "hybrid"
-          ]
+          "enum": ["salesforce-first", "business-first", "hybrid"]
         },
         "autoGenerateApiNames": {
           "type": "boolean"
@@ -218,14 +185,7 @@
     },
     "solution": {
       "type": "object",
-      "required": [
-        "id",
-        "projectId",
-        "name",
-        "versions",
-        "createdAt",
-        "updatedAt"
-      ],
+      "required": ["id", "projectId", "name", "versions", "createdAt", "updatedAt"],
       "properties": {
         "id": {
           "$ref": "#/$defs/uuid"
@@ -286,30 +246,17 @@
           "type": "string"
         },
         "status": {
-          "enum": [
-            "discovery",
-            "draft",
-            "review",
-            "ready",
-            "archived"
-          ]
+          "enum": ["discovery", "draft", "review", "ready", "archived"]
         },
         "basedOnVersionId": {
           "$ref": "#/$defs/uuid"
         },
         "discovery": {
           "type": "object",
-          "required": [
-            "format",
-            "content",
-            "assetIds"
-          ],
+          "required": ["format", "content", "assetIds"],
           "properties": {
             "format": {
-              "enum": [
-                "html",
-                "json-rich-text"
-              ]
+              "enum": ["html", "json-rich-text"]
             },
             "content": {},
             "assetIds": {
@@ -359,9 +306,7 @@
     },
     "governance": {
       "type": "object",
-      "required": [
-        "tags"
-      ],
+      "required": ["tags"],
       "properties": {
         "businessOwner": {
           "type": "string"
@@ -382,41 +327,24 @@
           }
         },
         "dataClassification": {
-          "enum": [
-            "public",
-            "internal",
-            "confidential",
-            "restricted"
-          ]
+          "enum": ["public", "internal", "confidential", "restricted"]
         }
       },
       "additionalProperties": false
     },
     "object": {
       "type": "object",
-      "required": [
-        "id",
-        "origin",
-        "label",
-        "kind",
-        "governance"
-      ],
+      "required": ["id", "origin", "label", "kind", "governance"],
       "properties": {
         "id": {
           "$ref": "#/$defs/uuid"
         },
         "origin": {
           "type": "object",
-          "required": [
-            "type"
-          ],
+          "required": ["type"],
           "properties": {
             "type": {
-              "enum": [
-                "created",
-                "imported",
-                "ai-generated"
-              ]
+              "enum": ["created", "imported", "ai-generated"]
             },
             "sourceId": {
               "type": "string"
@@ -459,10 +387,7 @@
           "type": "boolean"
         },
         "deploymentStatus": {
-          "enum": [
-            "in-development",
-            "deployed"
-          ]
+          "enum": ["in-development", "deployed"]
         },
         "governance": {
           "$ref": "#/$defs/governance"
@@ -472,15 +397,7 @@
     },
     "field": {
       "type": "object",
-      "required": [
-        "id",
-        "objectId",
-        "origin",
-        "label",
-        "dataType",
-        "required",
-        "governance"
-      ],
+      "required": ["id", "objectId", "origin", "label", "dataType", "required", "governance"],
       "properties": {
         "id": {
           "$ref": "#/$defs/uuid"
@@ -608,9 +525,7 @@
     },
     "experience": {
       "type": "object",
-      "required": [
-        "layouts"
-      ],
+      "required": ["layouts"],
       "properties": {
         "layouts": {
           "type": "array",
@@ -623,12 +538,7 @@
     },
     "security": {
       "type": "object",
-      "required": [
-        "profiles",
-        "permissionSets",
-        "permissionSetGroups",
-        "fieldAccess"
-      ],
+      "required": ["profiles", "permissionSets", "permissionSetGroups", "fieldAccess"],
       "properties": {
         "profiles": {
           "type": "array",
