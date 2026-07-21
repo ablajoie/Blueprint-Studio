@@ -1,3 +1,4 @@
+import { BrandMark } from '../brand/BrandMark'
 import { useWorkspaceStore } from '../../store/workspaceStore'
 
 export function Header() {
@@ -8,14 +9,12 @@ export function Header() {
   const openProject = useWorkspaceStore((state) => state.openProject)
 
   return (
-    <header className="flex items-center justify-between border-b border-blue-950 bg-[#032d60] px-6 text-white">
+    <header className="flex items-center justify-between border-b border-[#071a30] bg-[#0B2341] px-6 text-white">
       <div className="flex items-center gap-3">
-        <div className="grid size-9 place-items-center rounded-lg bg-sky-400 font-bold text-blue-950">
-          B
-        </div>
+        <BrandMark />
         <div>
           <p className="text-sm font-semibold leading-tight">Blueprint Studio</p>
-          <p className="text-xs text-blue-200">Salesforce solution design workspace</p>
+          <p className="text-xs text-cyan-100/80">Salesforce solution design workspace</p>
         </div>
       </div>
       <div className="flex items-center gap-4">

@@ -52,6 +52,7 @@ pnpm validate:schema
 - TypeScript domain model
 - Commercial lending example project
 - Product and architecture documentation
+- Brand foundation and reusable product mark
 - Architecture Decision Records
 
 ## Repository structure

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { BrandMark } from '../../components/brand/BrandMark'
 import { DeleteConfirmationDialog } from '../../components/ui/DeleteConfirmationDialog'
 import type { ProjectSummary } from '../../domain/projectSummary'
 import { useWorkspaceStore } from '../../store/workspaceStore'
@@ -117,9 +118,7 @@ export function ProjectLibrary({ onCreateProject }: { onCreateProject: () => voi
         </div>
       ) : (
         <div className="mt-10 rounded-2xl border border-dashed border-blue-200 bg-white px-8 py-14 text-center shadow-sm">
-          <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-blue-100 text-2xl font-bold text-blue-900">
-            B
-          </div>
+          <BrandMark size="large" />
           <h2 className="mt-6 text-2xl font-semibold tracking-tight text-slate-950">
             Let’s create your first project
           </h2>
