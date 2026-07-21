@@ -1,22 +1,25 @@
 import { useState, type SyntheticEvent } from 'react'
 import { DialogActions, Field, TextArea, TextInput } from '../../components/ui/FormControls'
 import { Modal } from '../../components/ui/Modal'
+import type { Project } from '../../domain/blueprint'
 import { useWorkspaceStore } from '../../store/workspaceStore'
 
 const cloudOptions = ['Sales Cloud', 'Service Cloud', 'Financial Services Cloud', 'Data Cloud']
 
-export function CreateProjectDialog({ onClose }: { onClose: () => void }) {
+export function ProjectDialog({ project, onClose }: { project?: Project; onClose: () => void }) {
   const createProject = useWorkspaceStore((state) => state.createProject)
+  const updateProject = useWorkspaceStore((state) => state.updateProject)
   const status = useWorkspaceStore((state) => state.status)
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [clouds, setClouds] = useState<string[]>([])
+  const [name, setName] = useState(project?.name ?? '')
+  const [description, setDescription] = useState(project?.description ?? '')
+  const [clouds, setClouds] = useState<string[]>(project?.clouds ?? [])
   const saving = status === 'saving'
 
   const submit = async (event: SyntheticEvent<HTMLFormElement, SubmitEvent>) => {
     event.preventDefault()
     if (!name.trim()) return
-    await createProject({ name, description, clouds })
+    if (project) await updateProject({ name, description, clouds })
+    else await createProject({ name, description, clouds })
     if (useWorkspaceStore.getState().status === 'ready') onClose()
   }
 
@@ -28,8 +31,12 @@ export function CreateProjectDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal
-      title="Create a Blueprint project"
-      description="Give this initiative a clear home. You can refine these details later."
+      title={project ? 'Edit project details' : 'Create a Blueprint project'}
+      description={
+        project
+          ? 'Keep the project context current for everyone reviewing the design.'
+          : 'Give this initiative a clear home. You can refine these details later.'
+      }
       onClose={onClose}
     >
       <form onSubmit={(event) => void submit(event)}>
@@ -85,10 +92,14 @@ export function CreateProjectDialog({ onClose }: { onClose: () => void }) {
             Cancel
           </button>
           <button type="submit" className="button-primary" disabled={saving || !name.trim()}>
-            {saving ? 'Creating…' : 'Create project'}
+            {saving ? 'Saving…' : project ? 'Save changes' : 'Create project'}
           </button>
         </DialogActions>
       </form>
     </Modal>
   )
+}
+
+export function CreateProjectDialog({ onClose }: { onClose: () => void }) {
+  return <ProjectDialog onClose={onClose} />
 }

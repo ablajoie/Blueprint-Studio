@@ -1,7 +1,7 @@
 import { useState, type SyntheticEvent } from 'react'
 import { DialogActions, Field, Select, TextArea, TextInput } from '../../components/ui/FormControls'
 import { Modal } from '../../components/ui/Modal'
-import type { ObjectKind } from '../../domain/blueprint'
+import type { ObjectKind, SalesforceObject } from '../../domain/blueprint'
 import { generateApiName } from '../../domain/blueprintFactory'
 import { useWorkspaceStore } from '../../store/workspaceStore'
 
@@ -14,34 +14,47 @@ const objectKinds: { value: ObjectKind; label: string }[] = [
   { value: 'big-object', label: 'Big object' },
 ]
 
-export function CreateObjectDialog({ onClose }: { onClose: () => void }) {
+export function ObjectDialog({
+  object,
+  onClose,
+}: {
+  object?: SalesforceObject
+  onClose: () => void
+}) {
   const createObject = useWorkspaceStore((state) => state.createObject)
+  const updateObject = useWorkspaceStore((state) => state.updateObject)
   const status = useWorkspaceStore((state) => state.status)
-  const [label, setLabel] = useState('')
-  const [pluralLabel, setPluralLabel] = useState('')
-  const [apiName, setApiName] = useState('')
-  const [kind, setKind] = useState<ObjectKind>('custom')
-  const [description, setDescription] = useState('')
+  const [label, setLabel] = useState(object?.label ?? '')
+  const [pluralLabel, setPluralLabel] = useState(object?.pluralLabel ?? '')
+  const [apiName, setApiName] = useState(object?.apiName ?? '')
+  const [kind, setKind] = useState<ObjectKind>(object?.kind ?? 'custom')
+  const [description, setDescription] = useState(object?.description ?? '')
   const saving = status === 'saving'
   const suggestedApiName = label.trim() ? generateApiName(label, kind) : ''
 
   const submit = async (event: SyntheticEvent<HTMLFormElement, SubmitEvent>) => {
     event.preventDefault()
     if (!label.trim()) return
-    await createObject({
+    const input = {
       label,
       pluralLabel,
       apiName: apiName || suggestedApiName,
       kind,
       description,
-    })
+    }
+    if (object) await updateObject(object.id, input)
+    else await createObject(input)
     if (useWorkspaceStore.getState().status === 'ready') onClose()
   }
 
   return (
     <Modal
-      title="Create a Salesforce object"
-      description="Start with the Salesforce essentials. Governance details can be added as the design matures."
+      title={object ? `Edit ${object.label}` : 'Create a Salesforce object'}
+      description={
+        object
+          ? 'Update the Salesforce definition without changing the object’s connected identity.'
+          : 'Start with the Salesforce essentials. Governance details can be added as the design matures.'
+      }
       onClose={onClose}
     >
       <form onSubmit={(event) => void submit(event)}>
@@ -115,10 +128,14 @@ export function CreateObjectDialog({ onClose }: { onClose: () => void }) {
             Cancel
           </button>
           <button type="submit" className="button-primary" disabled={saving || !label.trim()}>
-            {saving ? 'Creating…' : 'Create object'}
+            {saving ? 'Saving…' : object ? 'Save changes' : 'Create object'}
           </button>
         </DialogActions>
       </form>
     </Modal>
   )
+}
+
+export function CreateObjectDialog({ onClose }: { onClose: () => void }) {
+  return <ObjectDialog onClose={onClose} />
 }

@@ -28,4 +28,8 @@ export const projectRepository = {
       payload: blueprint,
     })
   },
+
+  delete: async (projectId: string): Promise<void> => {
+    await database.projects.delete(projectId)
+  },
 }

@@ -1,7 +1,10 @@
 import { useState } from 'react'
+import { DeleteConfirmationDialog } from '../../components/ui/DeleteConfirmationDialog'
 import type { SalesforceField, SalesforceObject, Solution } from '../../domain/blueprint'
 import { getFieldDeleteDependencies } from '../../domain/blueprintFactory'
+import { getObjectDeleteImpact } from '../../domain/blueprintLifecycle'
 import { useWorkspaceStore } from '../../store/workspaceStore'
+import { ObjectDialog } from './CreateObjectDialog'
 import { CreateFieldDialog, FieldDialog } from './CreateFieldDialog'
 import { DeleteFieldDialog } from './DeleteFieldDialog'
 
@@ -20,11 +23,15 @@ export function MetadataWorkspace({
   const selectArtifact = useWorkspaceStore((state) => state.selectArtifact)
   const duplicateField = useWorkspaceStore((state) => state.duplicateField)
   const deleteField = useWorkspaceStore((state) => state.deleteField)
+  const deleteObject = useWorkspaceStore((state) => state.deleteObject)
   const status = useWorkspaceStore((state) => state.status)
+  const errorMessage = useWorkspaceStore((state) => state.errorMessage)
   const clearError = useWorkspaceStore((state) => state.clearError)
   const [creatingField, setCreatingField] = useState(false)
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null)
   const [deletingFieldId, setDeletingFieldId] = useState<string | null>(null)
+  const [editingObject, setEditingObject] = useState(false)
+  const [deletingObject, setDeletingObject] = useState(false)
   const version = solution.versions.at(-1)
   const objects = version?.metadata.objects ?? []
   const fields = version?.metadata.fields ?? []
@@ -42,6 +49,14 @@ export function MetadataWorkspace({
           selectedArtifactId={selectedArtifactId}
           actionPending={status === 'saving'}
           onBack={showObjectList}
+          onEditObject={() => {
+            if (status === 'error') clearError()
+            setEditingObject(true)
+          }}
+          onDeleteObject={() => {
+            if (status === 'error') clearError()
+            setDeletingObject(true)
+          }}
           onCreateField={() => {
             if (status === 'error') clearError()
             setCreatingField(true)
@@ -67,6 +82,32 @@ export function MetadataWorkspace({
             availableObjects={objects}
             onClose={() => {
               setCreatingField(false)
+            }}
+          />
+        ) : null}
+        {editingObject ? (
+          <ObjectDialog
+            object={selectedObject}
+            onClose={() => {
+              setEditingObject(false)
+            }}
+          />
+        ) : null}
+        {deletingObject && blueprint ? (
+          <DeleteConfirmationDialog
+            title={`Delete ${selectedObject.label}?`}
+            description="This permanently removes the object and the design artifacts it owns."
+            itemName={selectedObject.label}
+            {...getObjectDeleteImpact(blueprint, solution.id, selectedObject.id)}
+            confirmLabel="Delete object"
+            busy={status === 'saving'}
+            errorMessage={errorMessage}
+            onConfirm={async () => {
+              await deleteObject(selectedObject.id)
+              if (useWorkspaceStore.getState().status === 'ready') setDeletingObject(false)
+            }}
+            onClose={() => {
+              setDeletingObject(false)
             }}
           />
         ) : null}
@@ -151,6 +192,8 @@ function ObjectWorkspace({
   selectedArtifactId,
   actionPending,
   onBack,
+  onEditObject,
+  onDeleteObject,
   onCreateField,
   onEditField,
   onDuplicateField,
@@ -163,6 +206,8 @@ function ObjectWorkspace({
   selectedArtifactId: string | null
   actionPending: boolean
   onBack: () => void
+  onEditObject: () => void
+  onDeleteObject: () => void
   onCreateField: () => void
   onEditField: (id: string) => void
   onDuplicateField: (id: string) => void
@@ -185,9 +230,21 @@ function ObjectWorkspace({
             <p className="mt-3 max-w-3xl text-slate-600">{object.description}</p>
           ) : null}
         </div>
-        <button className="button-primary" onClick={onCreateField} disabled={actionPending}>
-          New Field
-        </button>
+        <div className="flex items-center gap-2">
+          <button className="button-secondary" onClick={onEditObject} disabled={actionPending}>
+            Edit object
+          </button>
+          <button
+            className="rounded-lg px-3 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+            onClick={onDeleteObject}
+            disabled={actionPending}
+          >
+            Delete object
+          </button>
+          <button className="button-primary" onClick={onCreateField} disabled={actionPending}>
+            New Field
+          </button>
+        </div>
       </div>
 
       <div className="mt-7 flex gap-6 border-b border-slate-200 text-sm font-semibold">

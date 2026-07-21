@@ -8,3 +8,5 @@
 - Data Cloud mapping
 - Template marketplace
 - Standard Metadata Starter Packs by Salesforce cloud
+- Bulk field selection and dependency-aware deletion
+- Dependent picklists with controlling-field value mappings

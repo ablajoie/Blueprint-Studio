@@ -7,6 +7,7 @@ vi.mock('../persistence/database', () => ({
   projectRepository: {
     loadMostRecent: vi.fn(),
     save: vi.fn(),
+    delete: vi.fn(),
   },
 }))
 
@@ -157,5 +158,72 @@ describe('workspaceStore persistence', () => {
       required: true,
     })
     expect(projectRepository.save).toHaveBeenCalledTimes(7)
+  })
+
+  it('persists project, solution, and object lifecycle operations', async () => {
+    vi.mocked(projectRepository.save).mockResolvedValue()
+    vi.mocked(projectRepository.delete).mockResolvedValue()
+    await useWorkspaceStore.getState().createProject({
+      name: 'Lifecycle Project',
+      description: '',
+      clouds: [],
+    })
+    await useWorkspaceStore.getState().updateProject({
+      name: 'Lifecycle Project Updated',
+      description: 'Current project details',
+      clouds: ['Sales Cloud'],
+    })
+    await useWorkspaceStore.getState().createSolution({ name: 'Core Model', description: '' })
+    const originalSolutionId = useWorkspaceStore.getState().selectedSolutionId
+    expect(originalSolutionId).not.toBeNull()
+    if (!originalSolutionId) return
+    await useWorkspaceStore
+      .getState()
+      .updateSolution(originalSolutionId, { name: 'Core Model Updated', description: 'Details' })
+    await useWorkspaceStore.getState().createObject({
+      label: 'Facility',
+      pluralLabel: 'Facilities',
+      apiName: '',
+      kind: 'custom',
+      description: '',
+    })
+    const objectId = useWorkspaceStore.getState().selectedObjectId
+    expect(objectId).not.toBeNull()
+    if (!objectId) return
+    await useWorkspaceStore.getState().updateObject(objectId, {
+      label: 'Credit Facility',
+      pluralLabel: 'Credit Facilities',
+      apiName: 'Credit_Facility__c',
+      kind: 'custom',
+      description: 'Updated object details',
+    })
+    await useWorkspaceStore.getState().deleteObject(objectId)
+    await useWorkspaceStore.getState().duplicateSolution(originalSolutionId)
+    const duplicateId = useWorkspaceStore.getState().selectedSolutionId
+    expect(duplicateId).not.toBe(originalSolutionId)
+    await useWorkspaceStore.getState().setSolutionArchived(originalSolutionId, true)
+    await useWorkspaceStore.getState().deleteSolution(originalSolutionId)
+
+    let state = useWorkspaceStore.getState()
+    expect(state.blueprint?.project).toMatchObject({
+      name: 'Lifecycle Project Updated',
+      description: 'Current project details',
+    })
+    expect(state.blueprint?.solutions).toHaveLength(1)
+    expect(state.blueprint?.solutions[0]).toMatchObject({
+      id: duplicateId,
+      name: 'Core Model Updated Copy',
+    })
+
+    await useWorkspaceStore.getState().deleteProject()
+    state = useWorkspaceStore.getState()
+    expect(projectRepository.delete).toHaveBeenCalledOnce()
+    expect(state).toMatchObject({
+      blueprint: null,
+      selectedSolutionId: null,
+      selectedObjectId: null,
+      selectedArtifactId: null,
+      status: 'ready',
+    })
   })
 })
