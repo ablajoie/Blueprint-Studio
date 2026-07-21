@@ -1,7 +1,7 @@
 import { useState, type SyntheticEvent } from 'react'
 import { DialogActions, Field, Select, TextArea, TextInput } from '../../components/ui/FormControls'
 import { Modal } from '../../components/ui/Modal'
-import type { FieldDataType, SalesforceObject } from '../../domain/blueprint'
+import type { FieldDataType, SalesforceField, SalesforceObject } from '../../domain/blueprint'
 import { generateFieldApiName } from '../../domain/blueprintFactory'
 import { useWorkspaceStore } from '../../store/workspaceStore'
 
@@ -72,32 +72,41 @@ const numericTypes: FieldDataType[] = ['number', 'currency', 'percent', 'geoloca
 const picklistTypes: FieldDataType[] = ['picklist', 'multi-select-picklist']
 const relationshipTypes: FieldDataType[] = ['lookup', 'master-detail']
 
-export function CreateFieldDialog({
+export function FieldDialog({
   object,
   availableObjects,
+  field,
   onClose,
 }: {
   object: SalesforceObject
   availableObjects: SalesforceObject[]
+  field?: SalesforceField
   onClose: () => void
 }) {
   const createField = useWorkspaceStore((state) => state.createField)
+  const updateField = useWorkspaceStore((state) => state.updateField)
   const status = useWorkspaceStore((state) => state.status)
   const errorMessage = useWorkspaceStore((state) => state.errorMessage)
   const clearError = useWorkspaceStore((state) => state.clearError)
-  const [label, setLabel] = useState('')
-  const [apiName, setApiName] = useState('')
-  const [dataType, setDataType] = useState<FieldDataType>('text')
-  const [description, setDescription] = useState('')
-  const [helpText, setHelpText] = useState('')
-  const [required, setRequired] = useState(false)
-  const [defaultValue, setDefaultValue] = useState('')
-  const [length, setLength] = useState('255')
-  const [precision, setPrecision] = useState('18')
-  const [scale, setScale] = useState('2')
-  const [picklistValues, setPicklistValues] = useState('')
-  const [referenceToObjectId, setReferenceToObjectId] = useState('')
-  const [formula, setFormula] = useState('')
+  const [label, setLabel] = useState(field?.label ?? '')
+  const [apiName, setApiName] = useState(field?.apiName ?? '')
+  const [dataType, setDataType] = useState<FieldDataType>(field?.dataType ?? 'text')
+  const [description, setDescription] = useState(field?.description ?? '')
+  const [helpText, setHelpText] = useState(field?.helpText ?? '')
+  const [required, setRequired] = useState(field?.required ?? false)
+  const [defaultValue, setDefaultValue] = useState(
+    field?.defaultValue === undefined || field.defaultValue === null
+      ? ''
+      : String(field.defaultValue),
+  )
+  const [length, setLength] = useState(String(field?.length ?? 255))
+  const [precision, setPrecision] = useState(String(field?.precision ?? 18))
+  const [scale, setScale] = useState(String(field?.scale ?? 2))
+  const [picklistValues, setPicklistValues] = useState(
+    field?.localPicklistValues?.map((value) => value.label).join('\n') ?? '',
+  )
+  const [referenceToObjectId, setReferenceToObjectId] = useState(field?.referenceToObjectId ?? '')
+  const [formula, setFormula] = useState(field?.formula ?? '')
   const saving = status === 'saving'
   const suggestedApiName = label.trim() ? generateFieldApiName(label) : ''
   const relationshipObjects =
@@ -109,7 +118,7 @@ export function CreateFieldDialog({
     event.preventDefault()
     if (!label.trim()) return
     clearError()
-    await createField({
+    const fieldInput = {
       label,
       apiName: apiName || suggestedApiName,
       dataType,
@@ -124,7 +133,9 @@ export function CreateFieldDialog({
       formula,
       referenceToObjectId,
       picklistValues: picklistValues.split(/\r?\n/),
-    })
+    }
+    if (field) await updateField(field.id, fieldInput)
+    else await createField(fieldInput)
     if (useWorkspaceStore.getState().status === 'ready') onClose()
   }
 
@@ -136,8 +147,12 @@ export function CreateFieldDialog({
 
   return (
     <Modal
-      title={`New field on ${object.label}`}
-      description="Capture the Salesforce definition and the documentation that should travel with it."
+      title={field ? `Edit ${field.label}` : `New field on ${object.label}`}
+      description={
+        field
+          ? 'Update the Salesforce definition while preserving its connected design history.'
+          : 'Capture the Salesforce definition and the documentation that should travel with it.'
+      }
       onClose={onClose}
     >
       <form onSubmit={(event) => void submit(event)}>
@@ -353,10 +368,18 @@ export function CreateFieldDialog({
             Cancel
           </button>
           <button type="submit" className="button-primary" disabled={saving || !label.trim()}>
-            {saving ? 'Creating…' : 'Create field'}
+            {saving ? 'Saving…' : field ? 'Save changes' : 'Create field'}
           </button>
         </DialogActions>
       </form>
     </Modal>
   )
+}
+
+export function CreateFieldDialog(props: {
+  object: SalesforceObject
+  availableObjects: SalesforceObject[]
+  onClose: () => void
+}) {
+  return <FieldDialog {...props} />
 }

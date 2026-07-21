@@ -227,22 +227,7 @@ export function addField(
   }
 
   const picklistValues = createPicklistValues(input.picklistValues, createId)
-  if (isPicklist(input.dataType) && picklistValues.length === 0) {
-    throw new Error('Picklist fields require at least one value')
-  }
-  if (isRelationship(input.dataType) && !input.referenceToObjectId) {
-    throw new Error('Relationship fields require a related object')
-  }
-  if (
-    isRelationship(input.dataType) &&
-    !version.metadata.objects.some((object) => object.id === input.referenceToObjectId)
-  ) {
-    throw new Error('The related object could not be found')
-  }
-  if (input.dataType === 'formula' && !compactText(input.formula)) {
-    throw new Error('Formula fields require a formula expression')
-  }
-  validateFieldNumbers(input)
+  validateFieldDefinition(version, input, picklistValues)
 
   const fieldId = createId()
   const field: SalesforceField = {
@@ -300,6 +285,246 @@ export function addField(
   }
 }
 
+export function updateField(
+  blueprint: BlueprintFile,
+  solutionId: UUID,
+  fieldId: UUID,
+  input: Omit<NewFieldInput, 'objectId'>,
+  options: FactoryOptions = {},
+): BlueprintFile {
+  const createId = options.createId ?? (() => crypto.randomUUID())
+  const timestamp = (options.now ?? (() => new Date().toISOString()))()
+  const solution = blueprint.solutions.find((item) => item.id === solutionId)
+  const version = solution?.versions.at(-1)
+  const existingField = version?.metadata.fields.find((field) => field.id === fieldId)
+  if (!solution || !version || !existingField) {
+    throw new Error('The selected field could not be found')
+  }
+
+  const completeInput: NewFieldInput = { ...input, objectId: existingField.objectId }
+  const label = compactText(completeInput.label)
+  if (!label) throw new Error('A field label is required')
+  const apiName = compactText(completeInput.apiName) || generateFieldApiName(label)
+  if (!apiName.replace(/__c$/i, '')) throw new Error('The field API name is not valid')
+  if (
+    version.metadata.fields.some(
+      (field) =>
+        field.id !== fieldId &&
+        field.objectId === existingField.objectId &&
+        field.apiName?.toLowerCase() === apiName.toLowerCase(),
+    )
+  ) {
+    throw new Error(`A field with the API name ${apiName} already exists on this object`)
+  }
+
+  const picklistValues = createPicklistValues(
+    completeInput.picklistValues,
+    createId,
+    existingField.localPicklistValues,
+  )
+  validateFieldDefinition(version, completeInput, picklistValues)
+
+  const updatedField: SalesforceField = {
+    id: existingField.id,
+    objectId: existingField.objectId,
+    origin: existingField.origin,
+    label,
+    apiName,
+    dataType: completeInput.dataType,
+    ...optionalText('description', completeInput.description),
+    ...optionalText('helpText', completeInput.helpText),
+    required: completeInput.dataType === 'master-detail' || completeInput.required,
+    ...optionalDefaultValue(completeInput.defaultValue, completeInput.dataType),
+    ...optionalNumber('length', completeInput.length),
+    ...optionalNumber('precision', completeInput.precision),
+    ...optionalNumber('scale', completeInput.scale),
+    ...(existingField.unique === undefined ? {} : { unique: existingField.unique }),
+    ...(existingField.externalId === undefined ? {} : { externalId: existingField.externalId }),
+    ...optionalText('formula', completeInput.formula),
+    ...(isRelationship(completeInput.dataType)
+      ? { referenceToObjectId: completeInput.referenceToObjectId }
+      : {}),
+    ...(isPicklist(completeInput.dataType) ? { localPicklistValues: picklistValues } : {}),
+    governance: existingField.governance,
+  }
+  const existingRelationship = version.metadata.relationships.find(
+    (relationship) => relationship.fieldId === fieldId,
+  )
+  const updatedRelationship: ObjectRelationship | null = isRelationship(completeInput.dataType)
+    ? {
+        id: existingRelationship?.id ?? createId(),
+        fieldId,
+        parentObjectId: completeInput.referenceToObjectId,
+        childObjectId: existingField.objectId,
+        type: completeInput.dataType,
+        ...(existingRelationship?.relationshipName
+          ? { relationshipName: existingRelationship.relationshipName }
+          : {}),
+        ...(existingRelationship?.description
+          ? { description: existingRelationship.description }
+          : {}),
+      }
+    : null
+
+  const solutions = blueprint.solutions.map((item) => {
+    if (item.id !== solutionId) return item
+    const versions = item.versions.map((candidate) => {
+      if (candidate.id !== version.id) return candidate
+      const relationships = candidate.metadata.relationships.filter(
+        (relationship) => relationship.fieldId !== fieldId,
+      )
+      return {
+        ...candidate,
+        metadata: {
+          ...candidate.metadata,
+          fields: candidate.metadata.fields.map((field) =>
+            field.id === fieldId ? updatedField : field,
+          ),
+          relationships: updatedRelationship
+            ? [...relationships, updatedRelationship]
+            : relationships,
+        },
+        updatedAt: timestamp,
+      }
+    })
+    return { ...item, versions, updatedAt: timestamp }
+  })
+
+  return touchBlueprint({ ...blueprint, solutions }, timestamp)
+}
+
+export function duplicateField(
+  blueprint: BlueprintFile,
+  solutionId: UUID,
+  fieldId: UUID,
+  options: FactoryOptions = {},
+): { blueprint: BlueprintFile; fieldId: UUID } {
+  const solution = blueprint.solutions.find((item) => item.id === solutionId)
+  const version = solution?.versions.at(-1)
+  const field = version?.metadata.fields.find((item) => item.id === fieldId)
+  if (!field || !version) throw new Error('The selected field could not be found')
+
+  let copyNumber = 1
+  let label = `${field.label} Copy`
+  let apiName = generateFieldApiName(label)
+  const hasApiName = (candidate: string) =>
+    version.metadata.fields.some(
+      (item) =>
+        item.objectId === field.objectId && item.apiName?.toLowerCase() === candidate.toLowerCase(),
+    )
+  while (hasApiName(apiName)) {
+    copyNumber += 1
+    label = `${field.label} Copy ${String(copyNumber)}`
+    apiName = generateFieldApiName(label)
+  }
+
+  return addField(
+    blueprint,
+    solutionId,
+    {
+      objectId: field.objectId,
+      label,
+      apiName,
+      dataType: field.dataType,
+      description: field.description ?? '',
+      helpText: field.helpText ?? '',
+      required: field.required,
+      defaultValue:
+        field.defaultValue === undefined || field.defaultValue === null
+          ? ''
+          : String(field.defaultValue),
+      ...(field.length === undefined ? {} : { length: field.length }),
+      ...(field.precision === undefined ? {} : { precision: field.precision }),
+      ...(field.scale === undefined ? {} : { scale: field.scale }),
+      formula: field.formula ?? '',
+      referenceToObjectId: field.referenceToObjectId ?? '',
+      picklistValues: field.localPicklistValues?.map((value) => value.label) ?? [],
+    },
+    options,
+  )
+}
+
+export function getFieldDeleteDependencies(
+  blueprint: BlueprintFile,
+  solutionId: UUID,
+  fieldId: UUID,
+): string[] {
+  const solution = blueprint.solutions.find((item) => item.id === solutionId)
+  const version = solution?.versions.at(-1)
+  if (!version) return []
+
+  const dependencies: string[] = []
+  for (const layout of version.experience.layouts) {
+    const usesField = layout.sections.some((section) =>
+      section.items.some(
+        (item) =>
+          item.artifactId === fieldId ||
+          item.visibilityRule?.conditions.some((condition) => condition.fieldId === fieldId),
+      ),
+    )
+    if (usesField) dependencies.push(`Layout: ${layout.name}`)
+  }
+  for (const rule of version.metadata.validationRules) {
+    if (rule.fieldId === fieldId) dependencies.push(`Validation rule: ${rule.name}`)
+  }
+  for (const assignment of version.security.fieldAccess) {
+    if (assignment.fieldId !== fieldId) continue
+    const principals = [...version.security.profiles, ...version.security.permissionSets]
+    const principal = principals.find((item) => item.id === assignment.principalId)
+    dependencies.push(`Security assignment: ${principal?.name ?? assignment.principalId}`)
+  }
+  for (const requirement of version.requirements) {
+    if (requirement.linkedArtifactIds.includes(fieldId)) {
+      dependencies.push(`Requirement: ${requirement.title}`)
+    }
+  }
+  for (const decision of version.decisions) {
+    if (decision.linkedArtifactIds.includes(fieldId)) {
+      dependencies.push(`Decision: ${decision.title}`)
+    }
+  }
+  return [...new Set(dependencies)]
+}
+
+export function deleteField(
+  blueprint: BlueprintFile,
+  solutionId: UUID,
+  fieldId: UUID,
+  options: FactoryOptions = {},
+): BlueprintFile {
+  const timestamp = (options.now ?? (() => new Date().toISOString()))()
+  const solution = blueprint.solutions.find((item) => item.id === solutionId)
+  const version = solution?.versions.at(-1)
+  if (!solution || !version || !version.metadata.fields.some((field) => field.id === fieldId)) {
+    throw new Error('The selected field could not be found')
+  }
+  const dependencies = getFieldDeleteDependencies(blueprint, solutionId, fieldId)
+  if (dependencies.length) {
+    throw new Error('Remove this field from its linked artifacts before deleting it')
+  }
+
+  const solutions = blueprint.solutions.map((item) => {
+    if (item.id !== solutionId) return item
+    const versions = item.versions.map((candidate) =>
+      candidate.id === version.id
+        ? {
+            ...candidate,
+            metadata: {
+              ...candidate.metadata,
+              fields: candidate.metadata.fields.filter((field) => field.id !== fieldId),
+              relationships: candidate.metadata.relationships.filter(
+                (relationship) => relationship.fieldId !== fieldId,
+              ),
+            },
+            updatedAt: timestamp,
+          }
+        : candidate,
+    )
+    return { ...item, versions, updatedAt: timestamp }
+  })
+  return touchBlueprint({ ...blueprint, solutions }, timestamp)
+}
+
 export function generateApiName(label: string, kind: ObjectKind): string {
   const normalized = compactText(label)
     .replace(/[^a-zA-Z0-9]+/g, '_')
@@ -331,15 +556,49 @@ function isRelationship(dataType: FieldDataType): dataType is 'lookup' | 'master
   return dataType === 'lookup' || dataType === 'master-detail'
 }
 
-function createPicklistValues(values: string[], createId: () => UUID): PicklistValue[] {
+function createPicklistValues(
+  values: string[],
+  createId: () => UUID,
+  existingValues: PicklistValue[] = [],
+): PicklistValue[] {
   const uniqueValues = [...new Set(values.map(compactText).filter(Boolean))]
-  return uniqueValues.map((label) => ({
-    id: createId(),
-    label,
-    apiValue: label,
-    active: true,
-    default: false,
-  }))
+  return uniqueValues.map((label) => {
+    const existing = existingValues.find(
+      (value) => value.apiValue.toLowerCase() === label.toLowerCase(),
+    )
+    return existing
+      ? { ...existing, label, apiValue: label }
+      : {
+          id: createId(),
+          label,
+          apiValue: label,
+          active: true,
+          default: false,
+        }
+  })
+}
+
+function validateFieldDefinition(
+  version: SolutionVersion,
+  input: NewFieldInput,
+  picklistValues: PicklistValue[],
+) {
+  if (isPicklist(input.dataType) && picklistValues.length === 0) {
+    throw new Error('Picklist fields require at least one value')
+  }
+  if (isRelationship(input.dataType) && !input.referenceToObjectId) {
+    throw new Error('Relationship fields require a related object')
+  }
+  if (
+    isRelationship(input.dataType) &&
+    !version.metadata.objects.some((object) => object.id === input.referenceToObjectId)
+  ) {
+    throw new Error('The related object could not be found')
+  }
+  if (input.dataType === 'formula' && !compactText(input.formula)) {
+    throw new Error('Formula fields require a formula expression')
+  }
+  validateFieldNumbers(input)
 }
 
 function optionalNumber(key: string, value: number | undefined) {

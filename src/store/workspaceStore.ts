@@ -5,10 +5,13 @@ import {
   addObject,
   addSolution,
   createBlueprint,
+  deleteField as deleteFieldFromBlueprint,
+  duplicateField as duplicateFieldInBlueprint,
   type NewFieldInput,
   type NewObjectInput,
   type NewProjectInput,
   type NewSolutionInput,
+  updateField as updateFieldInBlueprint,
 } from '../domain/blueprintFactory'
 import { projectRepository } from '../persistence/database'
 
@@ -27,6 +30,9 @@ interface WorkspaceState {
   createSolution: (input: NewSolutionInput) => Promise<void>
   createObject: (input: NewObjectInput) => Promise<void>
   createField: (input: Omit<NewFieldInput, 'objectId'>) => Promise<void>
+  updateField: (fieldId: string, input: Omit<NewFieldInput, 'objectId'>) => Promise<void>
+  duplicateField: (fieldId: string) => Promise<void>
+  deleteField: (fieldId: string) => Promise<void>
   openView: (view: WorkspaceView) => void
   selectSolution: (id: string) => void
   openObject: (id: string) => void
@@ -131,6 +137,61 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       set({
         status: 'error',
         errorMessage: error instanceof Error ? error.message : 'Your field could not be saved.',
+      })
+    }
+  },
+  updateField: async (fieldId, input) => {
+    const state = useWorkspaceStore.getState()
+    if (!state.blueprint || !state.selectedSolutionId) return
+    set({ status: 'saving', errorMessage: null })
+    try {
+      const blueprint = updateFieldInBlueprint(
+        state.blueprint,
+        state.selectedSolutionId,
+        fieldId,
+        input,
+      )
+      await projectRepository.save(blueprint)
+      set({ blueprint, selectedArtifactId: fieldId, status: 'ready' })
+    } catch (error) {
+      set({
+        status: 'error',
+        errorMessage: error instanceof Error ? error.message : 'Your field could not be updated.',
+      })
+    }
+  },
+  duplicateField: async (fieldId) => {
+    const state = useWorkspaceStore.getState()
+    if (!state.blueprint || !state.selectedSolutionId) return
+    set({ status: 'saving', errorMessage: null })
+    try {
+      const result = duplicateFieldInBlueprint(state.blueprint, state.selectedSolutionId, fieldId)
+      await projectRepository.save(result.blueprint)
+      set({
+        blueprint: result.blueprint,
+        selectedArtifactId: result.fieldId,
+        status: 'ready',
+      })
+    } catch (error) {
+      set({
+        status: 'error',
+        errorMessage:
+          error instanceof Error ? error.message : 'Your field could not be duplicated.',
+      })
+    }
+  },
+  deleteField: async (fieldId) => {
+    const state = useWorkspaceStore.getState()
+    if (!state.blueprint || !state.selectedSolutionId) return
+    set({ status: 'saving', errorMessage: null })
+    try {
+      const blueprint = deleteFieldFromBlueprint(state.blueprint, state.selectedSolutionId, fieldId)
+      await projectRepository.save(blueprint)
+      set({ blueprint, selectedArtifactId: state.selectedObjectId, status: 'ready' })
+    } catch (error) {
+      set({
+        status: 'error',
+        errorMessage: error instanceof Error ? error.message : 'Your field could not be deleted.',
       })
     }
   },

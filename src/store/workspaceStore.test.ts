@@ -92,4 +92,70 @@ describe('workspaceStore persistence', () => {
     })
     expect(projectRepository.save).toHaveBeenCalledTimes(4)
   })
+
+  it('persists field edits, duplication, and deletion', async () => {
+    vi.mocked(projectRepository.save).mockResolvedValue()
+    await useWorkspaceStore.getState().createProject({
+      name: 'Field Operations',
+      description: '',
+      clouds: [],
+    })
+    await useWorkspaceStore.getState().createSolution({ name: 'Core Model', description: '' })
+    await useWorkspaceStore.getState().createObject({
+      label: 'Facility',
+      pluralLabel: 'Facilities',
+      apiName: '',
+      kind: 'custom',
+      description: '',
+    })
+    await useWorkspaceStore.getState().createField({
+      label: 'Commitment Amount',
+      apiName: '',
+      dataType: 'currency',
+      description: '',
+      helpText: '',
+      required: false,
+      defaultValue: '',
+      precision: 18,
+      scale: 2,
+      formula: '',
+      referenceToObjectId: '',
+      picklistValues: [],
+    })
+
+    const originalFieldId = useWorkspaceStore.getState().selectedArtifactId
+    expect(originalFieldId).not.toBeNull()
+    if (!originalFieldId) return
+
+    await useWorkspaceStore.getState().updateField(originalFieldId, {
+      label: 'Total Commitment',
+      apiName: 'Total_Commitment__c',
+      dataType: 'currency',
+      description: 'Maximum committed facility amount',
+      helpText: '',
+      required: true,
+      defaultValue: '',
+      precision: 18,
+      scale: 2,
+      formula: '',
+      referenceToObjectId: '',
+      picklistValues: [],
+    })
+    await useWorkspaceStore.getState().duplicateField(originalFieldId)
+    const duplicatedFieldId = useWorkspaceStore.getState().selectedArtifactId
+    await useWorkspaceStore.getState().deleteField(originalFieldId)
+
+    const state = useWorkspaceStore.getState()
+    const fields = state.blueprint?.solutions[0]?.versions[0]?.metadata.fields
+    expect(state.status).toBe('ready')
+    expect(state.selectedArtifactId).toBe(state.selectedObjectId)
+    expect(fields).toHaveLength(1)
+    expect(fields?.[0]).toMatchObject({
+      id: duplicatedFieldId,
+      label: 'Total Commitment Copy',
+      apiName: 'Total_Commitment_Copy__c',
+      required: true,
+    })
+    expect(projectRepository.save).toHaveBeenCalledTimes(7)
+  })
 })

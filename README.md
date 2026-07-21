@@ -8,7 +8,7 @@ A Salesforce professional can create a project and solution, capture discovery n
 
 ## Application foundation
 
-The repository includes a production-oriented React application with strict TypeScript, Vite, Tailwind CSS, React Router, Zustand, Dexie, ESLint, Prettier, and Vitest. The current walking skeleton supports project, solution, object, and type-aware field creation with local persistence, a live Solution Explorer, and contextual inspector.
+The repository includes a production-oriented React application with strict TypeScript, Vite, Tailwind CSS, React Router, Zustand, Dexie, ESLint, Prettier, and Vitest. The current walking skeleton supports project, solution, and object creation plus type-aware field creation, editing, duplication, and dependency-safe deletion. All changes persist locally and immediately update the Solution Explorer and contextual inspector.
 
 ### Local setup
 

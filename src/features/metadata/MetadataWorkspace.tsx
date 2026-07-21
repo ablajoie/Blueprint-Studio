@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import type { SalesforceField, SalesforceObject, Solution } from '../../domain/blueprint'
+import { getFieldDeleteDependencies } from '../../domain/blueprintFactory'
 import { useWorkspaceStore } from '../../store/workspaceStore'
-import { CreateFieldDialog } from './CreateFieldDialog'
+import { CreateFieldDialog, FieldDialog } from './CreateFieldDialog'
+import { DeleteFieldDialog } from './DeleteFieldDialog'
 
 export function MetadataWorkspace({
   solution,
@@ -12,14 +14,23 @@ export function MetadataWorkspace({
 }) {
   const selectedObjectId = useWorkspaceStore((state) => state.selectedObjectId)
   const selectedArtifactId = useWorkspaceStore((state) => state.selectedArtifactId)
+  const blueprint = useWorkspaceStore((state) => state.blueprint)
   const openObject = useWorkspaceStore((state) => state.openObject)
   const showObjectList = useWorkspaceStore((state) => state.showObjectList)
   const selectArtifact = useWorkspaceStore((state) => state.selectArtifact)
+  const duplicateField = useWorkspaceStore((state) => state.duplicateField)
+  const deleteField = useWorkspaceStore((state) => state.deleteField)
+  const status = useWorkspaceStore((state) => state.status)
+  const clearError = useWorkspaceStore((state) => state.clearError)
   const [creatingField, setCreatingField] = useState(false)
+  const [editingFieldId, setEditingFieldId] = useState<string | null>(null)
+  const [deletingFieldId, setDeletingFieldId] = useState<string | null>(null)
   const version = solution.versions.at(-1)
   const objects = version?.metadata.objects ?? []
   const fields = version?.metadata.fields ?? []
   const selectedObject = objects.find((object) => object.id === selectedObjectId)
+  const editingField = fields.find((field) => field.id === editingFieldId)
+  const deletingField = fields.find((field) => field.id === deletingFieldId)
 
   if (selectedObject) {
     return (
@@ -29,9 +40,24 @@ export function MetadataWorkspace({
           object={selectedObject}
           fields={fields.filter((field) => field.objectId === selectedObject.id)}
           selectedArtifactId={selectedArtifactId}
+          actionPending={status === 'saving'}
           onBack={showObjectList}
           onCreateField={() => {
+            if (status === 'error') clearError()
             setCreatingField(true)
+          }}
+          onEditField={(fieldId) => {
+            if (status === 'error') clearError()
+            selectArtifact(fieldId)
+            setEditingFieldId(fieldId)
+          }}
+          onDuplicateField={(fieldId) => {
+            void duplicateField(fieldId)
+          }}
+          onDeleteField={(fieldId) => {
+            if (status === 'error') clearError()
+            selectArtifact(fieldId)
+            setDeletingFieldId(fieldId)
           }}
           onSelectField={selectArtifact}
         />
@@ -41,6 +67,28 @@ export function MetadataWorkspace({
             availableObjects={objects}
             onClose={() => {
               setCreatingField(false)
+            }}
+          />
+        ) : null}
+        {editingField ? (
+          <FieldDialog
+            object={selectedObject}
+            availableObjects={objects}
+            field={editingField}
+            onClose={() => {
+              setEditingFieldId(null)
+            }}
+          />
+        ) : null}
+        {deletingField ? (
+          <DeleteFieldDialog
+            field={deletingField}
+            dependencies={
+              blueprint ? getFieldDeleteDependencies(blueprint, solution.id, deletingField.id) : []
+            }
+            onConfirm={() => deleteField(deletingField.id)}
+            onClose={() => {
+              setDeletingFieldId(null)
             }}
           />
         ) : null}
@@ -101,18 +149,28 @@ function ObjectWorkspace({
   object,
   fields,
   selectedArtifactId,
+  actionPending,
   onBack,
   onCreateField,
+  onEditField,
+  onDuplicateField,
+  onDeleteField,
   onSelectField,
 }: {
   solution: Solution
   object: SalesforceObject
   fields: SalesforceField[]
   selectedArtifactId: string | null
+  actionPending: boolean
   onBack: () => void
   onCreateField: () => void
+  onEditField: (id: string) => void
+  onDuplicateField: (id: string) => void
+  onDeleteField: (id: string) => void
   onSelectField: (id: string) => void
 }) {
+  const selectedField = fields.find((field) => field.id === selectedArtifactId)
+
   return (
     <section className="mx-auto max-w-6xl p-8">
       <button className="text-sm font-semibold text-blue-700 hover:underline" onClick={onBack}>
@@ -127,7 +185,7 @@ function ObjectWorkspace({
             <p className="mt-3 max-w-3xl text-slate-600">{object.description}</p>
           ) : null}
         </div>
-        <button className="button-primary" onClick={onCreateField}>
+        <button className="button-primary" onClick={onCreateField} disabled={actionPending}>
           New Field
         </button>
       </div>
@@ -145,6 +203,43 @@ function ObjectWorkspace({
             <h2 className="font-semibold text-slate-950">Fields</h2>
             <p className="mt-0.5 text-sm text-slate-500">{fields.length} defined on this object</p>
           </div>
+          {selectedField ? (
+            <div
+              className="flex items-center gap-2"
+              aria-label={`Actions for ${selectedField.label}`}
+            >
+              <button
+                type="button"
+                className="button-secondary"
+                disabled={actionPending}
+                onClick={() => {
+                  onEditField(selectedField.id)
+                }}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                className="button-secondary"
+                disabled={actionPending}
+                onClick={() => {
+                  onDuplicateField(selectedField.id)
+                }}
+              >
+                Duplicate
+              </button>
+              <button
+                type="button"
+                className="rounded-md px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+                disabled={actionPending}
+                onClick={() => {
+                  onDeleteField(selectedField.id)
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          ) : null}
         </div>
         {fields.length ? (
           <FieldTable fields={fields} selectedId={selectedArtifactId} onSelect={onSelectField} />
@@ -158,7 +253,11 @@ function ObjectWorkspace({
               Define what this object needs to capture. Blueprint will keep the Salesforce metadata
               and design notes together.
             </p>
-            <button className="button-primary mt-5" onClick={onCreateField}>
+            <button
+              className="button-primary mt-5"
+              onClick={onCreateField}
+              disabled={actionPending}
+            >
               New Field
             </button>
           </div>
