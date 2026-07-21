@@ -13,16 +13,30 @@ export function Inspector() {
   const blueprint = useWorkspaceStore((state) => state.blueprint)
   const selectedSolutionId = useWorkspaceStore((state) => state.selectedSolutionId)
   const selectedArtifactId = useWorkspaceStore((state) => state.selectedArtifactId)
+  const selectArtifact = useWorkspaceStore((state) => state.selectArtifact)
   const selectedSolution = blueprint?.solutions.find(
     (solution) => solution.id === selectedSolutionId,
   )
   const version = selectedSolution?.versions.at(-1)
   const field = version?.metadata.fields.find((item) => item.id === selectedArtifactId)
   const object = version?.metadata.objects.find((item) => item.id === selectedArtifactId)
+  if (!field && !object) return null
 
   return (
     <aside className="overflow-auto border-l border-slate-200 bg-white p-5" aria-label="Inspector">
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Inspector</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Inspector</p>
+        <button
+          className="grid size-8 place-items-center rounded-md text-lg leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+          aria-label="Close inspector"
+          title="Close inspector"
+          onClick={() => {
+            selectArtifact(null)
+          }}
+        >
+          ×
+        </button>
+      </div>
       {field ? (
         <div className="mt-5">
           <span className="inline-flex rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold capitalize text-violet-800">
@@ -67,17 +81,7 @@ export function Inspector() {
             </div>
           </dl>
         </div>
-      ) : (
-        <div className="mt-6 text-center">
-          <div className="mx-auto grid size-10 place-items-center rounded-full bg-slate-100 text-slate-400">
-            i
-          </div>
-          <p className="mt-3 text-sm font-medium">Nothing selected</p>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
-            Select an item to view its properties.
-          </p>
-        </div>
-      )}
+      ) : null}
     </aside>
   )
 }
