@@ -15,11 +15,15 @@ The repository now includes a production-oriented React application shell with s
 Requirements: Node.js 20.19+ or 22.12+ and pnpm 11+.
 
 ```bash
+git clone https://github.com/ablajoie/Blueprint-Studio.git
+cd Blueprint-Studio
 pnpm install
 pnpm dev
 ```
 
-Vite prints the local URL after startup. Before opening a pull request, run:
+Clone the repository once, then use that working folder for development. Future updates can be retrieved with `git pull`; downloading a new ZIP for every version is not recommended. Vite prints the local URL after startup.
+
+Project data is saved automatically in the browser on the current device. Before opening a pull request, run:
 
 ```bash
 pnpm format:check
