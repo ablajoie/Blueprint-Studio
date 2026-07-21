@@ -33,6 +33,15 @@ export function SolutionExplorer() {
       <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
         Solution Explorer
       </p>
+      <nav aria-label="Workspace navigation" className="mb-3">
+        <ExplorerButton
+          label="All projects"
+          active={activeView === 'projects'}
+          onClick={() => {
+            openView('projects')
+          }}
+        />
+      </nav>
       {!blueprint ? (
         <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3">
           <p className="text-sm font-medium">No project loaded</p>

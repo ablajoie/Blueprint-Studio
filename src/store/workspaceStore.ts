@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { BlueprintFile } from '../domain/blueprint'
+import type { ProjectSummary } from '../domain/projectSummary'
 import {
   addField,
   addObject,
@@ -22,22 +23,26 @@ import {
   updateProject as updateProjectInBlueprint,
   updateSolution as updateSolutionInBlueprint,
 } from '../domain/blueprintLifecycle'
-import { projectRepository } from '../persistence/database'
+import { projectRepository, workspacePreferenceRepository } from '../persistence/database'
 
-export type WorkspaceView = 'overview' | 'start' | 'metadata'
+export type WorkspaceView = 'projects' | 'overview' | 'start' | 'metadata'
 
 interface WorkspaceState {
   status: 'idle' | 'loading' | 'ready' | 'saving' | 'error'
   blueprint: BlueprintFile | null
+  projects: ProjectSummary[]
   selectedSolutionId: string | null
   selectedObjectId: string | null
   selectedArtifactId: string | null
   activeView: WorkspaceView
   errorMessage: string | null
   hydrate: () => Promise<void>
+  refreshProjects: () => Promise<void>
+  openProject: (projectId: string) => Promise<void>
   createProject: (input: NewProjectInput) => Promise<void>
   updateProject: (input: NewProjectInput) => Promise<void>
-  deleteProject: () => Promise<void>
+  updateStoredProject: (projectId: string, input: NewProjectInput) => Promise<void>
+  deleteProject: (projectId?: string) => Promise<void>
   createSolution: (input: NewSolutionInput) => Promise<void>
   updateSolution: (solutionId: string, input: NewSolutionInput) => Promise<void>
   duplicateSolution: (solutionId: string) => Promise<void>
@@ -61,6 +66,7 @@ interface WorkspaceState {
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   status: 'idle',
   blueprint: null,
+  projects: [],
   selectedSolutionId: null,
   selectedObjectId: null,
   selectedArtifactId: null,
@@ -69,15 +75,54 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   hydrate: async () => {
     set({ status: 'loading', errorMessage: null })
     try {
-      const blueprint = await projectRepository.loadMostRecent()
+      const projects = await projectRepository.list()
+      const preferredProjectId = workspacePreferenceRepository.loadLastOpenedProjectId()
+      const preferredProjectExists = projects.some(
+        (summary) => summary.project.id === preferredProjectId,
+      )
+      let blueprint = preferredProjectExists
+        ? await projectRepository.load(preferredProjectId ?? '')
+        : null
+      blueprint ??= await projectRepository.loadMostRecent()
+      if (blueprint) workspacePreferenceRepository.saveLastOpenedProjectId(blueprint.project.id)
+      else workspacePreferenceRepository.clearLastOpenedProjectId()
       set({
         blueprint,
+        projects,
         selectedSolutionId: blueprint?.solutions[0]?.id ?? null,
         selectedObjectId: null,
+        selectedArtifactId: null,
+        activeView: blueprint ? 'overview' : 'projects',
         status: 'ready',
       })
     } catch {
       set({ status: 'error', errorMessage: 'Blueprint Studio could not load your local project.' })
+    }
+  },
+  refreshProjects: async () => {
+    try {
+      const projects = await projectRepository.list()
+      set({ projects })
+    } catch {
+      set({ status: 'error', errorMessage: 'Your local project library could not be refreshed.' })
+    }
+  },
+  openProject: async (projectId) => {
+    set({ status: 'loading', errorMessage: null })
+    try {
+      const blueprint = await projectRepository.load(projectId)
+      if (!blueprint) throw new Error('Project not found')
+      workspacePreferenceRepository.saveLastOpenedProjectId(projectId)
+      set({
+        blueprint,
+        selectedSolutionId: blueprint.solutions[0]?.id ?? null,
+        selectedObjectId: null,
+        selectedArtifactId: null,
+        activeView: 'overview',
+        status: 'ready',
+      })
+    } catch {
+      set({ status: 'error', errorMessage: 'The selected project could not be opened.' })
     }
   },
   createProject: async (input) => {
@@ -85,8 +130,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     try {
       const blueprint = createBlueprint(input)
       await projectRepository.save(blueprint)
+      const projects = await projectRepository.list()
+      workspacePreferenceRepository.saveLastOpenedProjectId(blueprint.project.id)
       set({
         blueprint,
+        projects,
         selectedSolutionId: null,
         selectedObjectId: null,
         selectedArtifactId: null,
@@ -104,7 +152,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     try {
       const blueprint = updateProjectInBlueprint(current, input)
       await projectRepository.save(blueprint)
-      set({ blueprint, status: 'ready' })
+      const projects = await projectRepository.list()
+      set({ blueprint, projects, status: 'ready' })
     } catch (error) {
       set({
         status: 'error',
@@ -112,18 +161,46 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       })
     }
   },
-  deleteProject: async () => {
+  updateStoredProject: async (projectId, input) => {
     const current = useWorkspaceStore.getState().blueprint
-    if (!current) return
     set({ status: 'saving', errorMessage: null })
     try {
-      await projectRepository.delete(current.project.id)
+      const stored =
+        current?.project.id === projectId ? current : await projectRepository.load(projectId)
+      if (!stored) throw new Error('The selected project could not be found')
+      const updated = updateProjectInBlueprint(stored, input)
+      await projectRepository.save(updated)
+      const projects = await projectRepository.list()
       set({
-        blueprint: null,
-        selectedSolutionId: null,
-        selectedObjectId: null,
-        selectedArtifactId: null,
-        activeView: 'overview',
+        blueprint: current?.project.id === projectId ? updated : current,
+        projects,
+        status: 'ready',
+      })
+    } catch (error) {
+      set({
+        status: 'error',
+        errorMessage: error instanceof Error ? error.message : 'Your project could not be updated.',
+      })
+    }
+  },
+  deleteProject: async (projectId) => {
+    const state = useWorkspaceStore.getState()
+    const current = state.blueprint
+    const targetProjectId = projectId ?? current?.project.id
+    if (!targetProjectId) return
+    set({ status: 'saving', errorMessage: null })
+    try {
+      await projectRepository.delete(targetProjectId)
+      const projects = await projectRepository.list()
+      const deletingCurrentProject = current?.project.id === targetProjectId
+      if (deletingCurrentProject) workspacePreferenceRepository.clearLastOpenedProjectId()
+      set({
+        blueprint: deletingCurrentProject ? null : current,
+        projects,
+        selectedSolutionId: deletingCurrentProject ? null : state.selectedSolutionId,
+        selectedObjectId: deletingCurrentProject ? null : state.selectedObjectId,
+        selectedArtifactId: deletingCurrentProject ? null : state.selectedArtifactId,
+        activeView: deletingCurrentProject ? 'projects' : state.activeView,
         status: 'ready',
       })
     } catch {

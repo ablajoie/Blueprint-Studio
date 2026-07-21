@@ -6,6 +6,7 @@ import { useWorkspaceStore } from '../../store/workspaceStore'
 import { CreateObjectDialog } from '../metadata/CreateObjectDialog'
 import { MetadataWorkspace } from '../metadata/MetadataWorkspace'
 import { CreateProjectDialog, ProjectDialog } from '../projects/CreateProjectDialog'
+import { ProjectLibrary } from '../projects/ProjectLibrary'
 import { CreateSolutionDialog, SolutionDialog } from '../solutions/CreateSolutionDialog'
 
 type OpenDialog =
@@ -52,8 +53,8 @@ export function WorkspaceHome() {
         </div>
       ) : null}
 
-      {!blueprint ? (
-        <WelcomeWorkspace
+      {activeView === 'projects' || !blueprint ? (
+        <ProjectLibrary
           onCreateProject={() => {
             setDialog({ kind: 'project-create' })
           }}
@@ -186,26 +187,6 @@ function LoadingWorkspace() {
       <div className="text-center">
         <div className="mx-auto size-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-700" />
         <p className="mt-4 text-sm text-slate-600">Opening your workspace…</p>
-      </div>
-    </section>
-  )
-}
-
-function WelcomeWorkspace({ onCreateProject }: { onCreateProject: () => void }) {
-  return (
-    <section className="grid min-h-full place-items-center p-8">
-      <div className="max-w-lg text-center">
-        <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-blue-100 text-2xl font-bold text-blue-900">
-          B
-        </div>
-        <h1 className="mt-6 text-3xl font-semibold tracking-tight">Welcome to Blueprint Studio</h1>
-        <p className="mt-3 leading-7 text-slate-600">
-          Design Salesforce solutions with their intent, metadata, and documentation together.
-        </p>
-        <button className="button-primary mt-7" onClick={onCreateProject}>
-          New Project
-        </button>
-        <p className="mt-4 text-xs text-slate-500">Your work is saved locally on this device.</p>
       </div>
     </section>
   )

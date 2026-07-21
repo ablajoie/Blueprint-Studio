@@ -8,18 +8,20 @@ describe('App', () => {
     useWorkspaceStore.setState({
       status: 'ready',
       blueprint: null,
+      projects: [],
       selectedSolutionId: null,
       selectedObjectId: null,
       selectedArtifactId: null,
       activeView: 'overview',
       errorMessage: null,
+      refreshProjects: vi.fn().mockResolvedValue(undefined),
     })
     render(
       <MemoryRouter>
         <App />
       </MemoryRouter>,
     )
-    expect(screen.getByRole('heading', { name: 'Welcome to Blueprint Studio' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Projects' })).toBeInTheDocument()
     expect(screen.getByLabelText('Solution Explorer')).toBeInTheDocument()
     expect(screen.getByLabelText('Inspector')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'New Project' })).toBeEnabled()

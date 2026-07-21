@@ -2,11 +2,20 @@ import { useState, type SyntheticEvent } from 'react'
 import { DialogActions, Field, TextArea, TextInput } from '../../components/ui/FormControls'
 import { Modal } from '../../components/ui/Modal'
 import type { Project } from '../../domain/blueprint'
+import type { NewProjectInput } from '../../domain/blueprintFactory'
 import { useWorkspaceStore } from '../../store/workspaceStore'
 
 const cloudOptions = ['Sales Cloud', 'Service Cloud', 'Financial Services Cloud', 'Data Cloud']
 
-export function ProjectDialog({ project, onClose }: { project?: Project; onClose: () => void }) {
+export function ProjectDialog({
+  project,
+  onSave,
+  onClose,
+}: {
+  project?: Project
+  onSave?: (input: NewProjectInput) => Promise<void>
+  onClose: () => void
+}) {
   const createProject = useWorkspaceStore((state) => state.createProject)
   const updateProject = useWorkspaceStore((state) => state.updateProject)
   const status = useWorkspaceStore((state) => state.status)
@@ -18,7 +27,8 @@ export function ProjectDialog({ project, onClose }: { project?: Project; onClose
   const submit = async (event: SyntheticEvent<HTMLFormElement, SubmitEvent>) => {
     event.preventDefault()
     if (!name.trim()) return
-    if (project) await updateProject({ name, description, clouds })
+    if (onSave) await onSave({ name, description, clouds })
+    else if (project) await updateProject({ name, description, clouds })
     else await createProject({ name, description, clouds })
     if (useWorkspaceStore.getState().status === 'ready') onClose()
   }

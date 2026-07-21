@@ -1,22 +1,32 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createBlueprint } from '../domain/blueprintFactory'
-import { projectRepository } from '../persistence/database'
+import { projectRepository, workspacePreferenceRepository } from '../persistence/database'
 import { useWorkspaceStore } from './workspaceStore'
 
 vi.mock('../persistence/database', () => ({
   projectRepository: {
+    list: vi.fn(),
+    load: vi.fn(),
     loadMostRecent: vi.fn(),
     save: vi.fn(),
     delete: vi.fn(),
+  },
+  workspacePreferenceRepository: {
+    loadLastOpenedProjectId: vi.fn(),
+    saveLastOpenedProjectId: vi.fn(),
+    clearLastOpenedProjectId: vi.fn(),
   },
 }))
 
 describe('workspaceStore persistence', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(projectRepository.list).mockResolvedValue([])
+    vi.mocked(workspacePreferenceRepository.loadLastOpenedProjectId).mockReturnValue(null)
     useWorkspaceStore.setState({
       status: 'idle',
       blueprint: null,
+      projects: [],
       selectedSolutionId: null,
       selectedObjectId: null,
       selectedArtifactId: null,
@@ -51,6 +61,63 @@ describe('workspaceStore persistence', () => {
       status: 'ready',
       blueprint: { project: { id: blueprint.project.id, name: 'Restored Project' } },
     })
+  })
+
+  it('restores and switches to an explicitly selected local project', async () => {
+    const first = createBlueprint({ name: 'First Project', description: '', clouds: [] })
+    const second = createBlueprint({ name: 'Second Project', description: '', clouds: [] })
+    vi.mocked(projectRepository.list).mockResolvedValue([
+      { project: first.project, solutionCount: 0, objectCount: 0, fieldCount: 0 },
+      { project: second.project, solutionCount: 0, objectCount: 0, fieldCount: 0 },
+    ])
+    vi.mocked(projectRepository.load).mockImplementation((projectId) =>
+      Promise.resolve(projectId === second.project.id ? second : first),
+    )
+    vi.mocked(workspacePreferenceRepository.loadLastOpenedProjectId).mockReturnValue(
+      second.project.id,
+    )
+
+    await useWorkspaceStore.getState().hydrate()
+    expect(useWorkspaceStore.getState().blueprint?.project.name).toBe('Second Project')
+
+    await useWorkspaceStore.getState().openProject(first.project.id)
+    expect(useWorkspaceStore.getState()).toMatchObject({
+      status: 'ready',
+      activeView: 'overview',
+      blueprint: { project: { name: 'First Project' } },
+    })
+    expect(workspacePreferenceRepository.saveLastOpenedProjectId).toHaveBeenLastCalledWith(
+      first.project.id,
+    )
+  })
+
+  it('deletes another project without closing the active project', async () => {
+    const current = createBlueprint({ name: 'Current Project', description: '', clouds: [] })
+    const other = createBlueprint({ name: 'Old Project', description: '', clouds: [] })
+    vi.mocked(projectRepository.delete).mockResolvedValue()
+    vi.mocked(projectRepository.list).mockResolvedValue([
+      { project: current.project, solutionCount: 0, objectCount: 0, fieldCount: 0 },
+    ])
+    useWorkspaceStore.setState({
+      blueprint: current,
+      projects: [
+        { project: current.project, solutionCount: 0, objectCount: 0, fieldCount: 0 },
+        { project: other.project, solutionCount: 0, objectCount: 0, fieldCount: 0 },
+      ],
+      activeView: 'overview',
+      status: 'ready',
+    })
+
+    await useWorkspaceStore.getState().deleteProject(other.project.id)
+
+    expect(projectRepository.delete).toHaveBeenCalledWith(other.project.id)
+    expect(useWorkspaceStore.getState()).toMatchObject({
+      status: 'ready',
+      activeView: 'overview',
+      blueprint: { project: { id: current.project.id, name: 'Current Project' } },
+      projects: [{ project: { id: current.project.id } }],
+    })
+    expect(workspacePreferenceRepository.clearLastOpenedProjectId).not.toHaveBeenCalled()
   })
 
   it('saves a field into the selected object', async () => {
