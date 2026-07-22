@@ -11,6 +11,7 @@ import {
   updateRelationship as updateRelationshipInBlueprint,
 } from '../domain/connectedMetadata'
 import type { ProjectSummary } from '../domain/projectSummary'
+import { updateDiscoveryDocument } from '../domain/discovery'
 import {
   addField,
   addObject,
@@ -35,7 +36,7 @@ import {
 } from '../domain/blueprintLifecycle'
 import { projectRepository, workspacePreferenceRepository } from '../persistence/database'
 
-export type WorkspaceView = 'projects' | 'overview' | 'start' | 'metadata'
+export type WorkspaceView = 'projects' | 'overview' | 'start' | 'discovery' | 'metadata'
 export type MetadataSection = 'objects' | 'relationships' | 'global-value-sets'
 
 interface WorkspaceState {
@@ -73,6 +74,7 @@ interface WorkspaceState {
   createGlobalValueSet: (input: NewGlobalValueSetInput) => Promise<void>
   updateGlobalValueSet: (globalValueSetId: string, input: NewGlobalValueSetInput) => Promise<void>
   deleteGlobalValueSet: (globalValueSetId: string) => Promise<void>
+  updateDiscovery: (content: string) => Promise<void>
   openView: (view: WorkspaceView) => void
   selectSolution: (id: string) => void
   openObject: (id: string) => void
@@ -596,6 +598,22 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         status: 'error',
         errorMessage:
           error instanceof Error ? error.message : 'Your global value set could not be deleted.',
+      })
+    }
+  },
+  updateDiscovery: async (content) => {
+    const state = useWorkspaceStore.getState()
+    if (!state.blueprint || !state.selectedSolutionId) return
+    set({ status: 'saving', errorMessage: null })
+    try {
+      const blueprint = updateDiscoveryDocument(state.blueprint, state.selectedSolutionId, content)
+      await projectRepository.save(blueprint)
+      set({ blueprint, status: 'ready' })
+    } catch (error) {
+      set({
+        status: 'error',
+        errorMessage:
+          error instanceof Error ? error.message : 'Your discovery notes could not be saved.',
       })
     }
   },

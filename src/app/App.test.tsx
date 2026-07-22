@@ -176,4 +176,32 @@ describe('App', () => {
     const inspector = screen.getByLabelText('Inspector')
     expect(within(inspector).getByRole('heading', { name: 'Borrower' })).toBeInTheDocument()
   })
+
+  it('opens Discovery from the solution workspace', () => {
+    const project = createBlueprint({ name: 'Lending', description: '', clouds: [] })
+    const result = addSolution(project, { name: 'Core Model', description: '' })
+    useWorkspaceStore.setState({
+      status: 'ready',
+      blueprint: result.blueprint,
+      projects: [summarizeProject(result.blueprint)],
+      selectedSolutionId: result.solutionId,
+      selectedObjectId: null,
+      selectedArtifactId: null,
+      activeView: 'start',
+      metadataSection: 'objects',
+      errorMessage: null,
+      refreshProjects: vi.fn().mockResolvedValue(undefined),
+    })
+
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /Start with Discovery Notes/ }))
+
+    expect(screen.getByRole('heading', { name: 'Discovery' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Discovery notes editor')).toBeInTheDocument()
+  })
 })

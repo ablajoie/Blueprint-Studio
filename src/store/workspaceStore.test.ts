@@ -173,6 +173,31 @@ describe('workspaceStore persistence', () => {
     })
   })
 
+  it('persists discovery notes in the selected solution version', async () => {
+    vi.mocked(projectRepository.save).mockResolvedValue()
+    await useWorkspaceStore.getState().createProject({
+      name: 'Discovery Project',
+      description: '',
+      clouds: [],
+    })
+    await useWorkspaceStore.getState().createSolution({
+      name: 'Workshop Design',
+      description: '',
+    })
+
+    await useWorkspaceStore
+      .getState()
+      .updateDiscovery('<h2>Problem</h2><p>Capture the current process.</p>')
+
+    expect(
+      useWorkspaceStore.getState().blueprint?.solutions[0]?.versions[0]?.discovery,
+    ).toMatchObject({
+      format: 'html',
+      content: '<h2>Problem</h2><p>Capture the current process.</p>',
+    })
+    expect(projectRepository.save).toHaveBeenCalledTimes(3)
+  })
+
   it('persists field edits, duplication, and deletion', async () => {
     vi.mocked(projectRepository.save).mockResolvedValue()
     await useWorkspaceStore.getState().createProject({

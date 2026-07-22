@@ -1,13 +1,6 @@
 import { useWorkspaceStore } from '../../store/workspaceStore'
 
-const futureSections = [
-  'Discovery',
-  'Requirements',
-  'Experience',
-  'Security',
-  'Documentation',
-  'Review',
-]
+const futureSections = ['Requirements', 'Experience', 'Security', 'Documentation', 'Review']
 
 export function SolutionExplorer() {
   const blueprint = useWorkspaceStore((state) => state.blueprint)
@@ -90,6 +83,13 @@ export function SolutionExplorer() {
                       active={activeView === 'start'}
                       onClick={() => {
                         openView('start')
+                      }}
+                    />
+                    <ExplorerButton
+                      label="Discovery"
+                      active={activeView === 'discovery'}
+                      onClick={() => {
+                        openView('discovery')
                       }}
                     />
                     <ExplorerButton

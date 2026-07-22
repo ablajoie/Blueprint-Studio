@@ -3,6 +3,7 @@ import { DeleteConfirmationDialog } from '../../components/ui/DeleteConfirmation
 import type { BlueprintFile, Solution } from '../../domain/blueprint'
 import { getProjectDeleteImpact, getSolutionDeleteImpact } from '../../domain/blueprintLifecycle'
 import { useWorkspaceStore } from '../../store/workspaceStore'
+import { DiscoveryWorkspace } from '../discovery/DiscoveryWorkspace'
 import { CreateObjectDialog } from '../metadata/CreateObjectDialog'
 import { MetadataWorkspace } from '../metadata/MetadataWorkspace'
 import { CreateProjectDialog, ProjectDialog } from '../projects/CreateProjectDialog'
@@ -65,6 +66,11 @@ export function WorkspaceHome() {
           onCreateObject={() => {
             setDialog({ kind: 'object-create' })
           }}
+        />
+      ) : activeView === 'discovery' && selectedSolution ? (
+        <DiscoveryWorkspace
+          key={`${selectedSolution.id}:${selectedSolution.versions.at(-1)?.id ?? 'empty'}`}
+          solution={selectedSolution}
         />
       ) : activeView === 'start' && selectedSolution ? (
         <SolutionStart
@@ -472,20 +478,23 @@ function SolutionStart({
           </span>
           <span className="mt-5 block text-sm font-semibold text-blue-700">Open Metadata →</span>
         </button>
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-left opacity-75">
-          <span className="grid size-11 place-items-center rounded-lg bg-white text-xl text-slate-500">
+        <button
+          className="group rounded-xl border border-blue-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-md"
+          onClick={() => {
+            openView('discovery')
+          }}
+        >
+          <span className="grid size-11 place-items-center rounded-lg bg-blue-100 text-xl text-blue-800">
             ¶
           </span>
-          <span className="mt-5 block text-lg font-semibold text-slate-800">
+          <span className="mt-5 block text-lg font-semibold text-slate-950">
             Start with Discovery Notes
           </span>
-          <span className="mt-2 block text-sm leading-6 text-slate-500">
+          <span className="mt-2 block text-sm leading-6 text-slate-600">
             Capture workshop notes and shape them into design artifacts.
           </span>
-          <span className="mt-5 inline-flex rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600">
-            Coming next
-          </span>
-        </div>
+          <span className="mt-5 block text-sm font-semibold text-blue-700">Open Discovery →</span>
+        </button>
       </div>
     </section>
   )

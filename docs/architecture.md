@@ -36,3 +36,7 @@ The selected artifact controls the main workspace and inspector while preserving
 ## Versioning
 
 Projects contain solutions. Solutions contain one or more immutable-or-draft design versions. Stable UUIDs persist across copied versions so comparisons can identify added, removed, and changed artifacts.
+
+## Discovery documents
+
+Each solution version owns one Discovery document. The alpha editor stores sanitized semantic HTML alongside the version and autosaves it with the local project. Embedded raster images are size-limited and stored as data URLs for the local-first alpha; portable export can migrate them into packaged assets without changing the Discovery document boundary.
