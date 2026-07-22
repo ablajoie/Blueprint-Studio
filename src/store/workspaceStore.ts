@@ -76,6 +76,7 @@ interface WorkspaceState {
   openView: (view: WorkspaceView) => void
   selectSolution: (id: string) => void
   openObject: (id: string) => void
+  openField: (objectId: string, fieldId: string) => void
   showObjectList: () => void
   showRelationships: () => void
   showGlobalValueSets: () => void
@@ -614,6 +615,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     set({
       selectedObjectId,
       selectedArtifactId: selectedObjectId,
+      metadataSection: 'objects',
+      activeView: 'metadata',
+    })
+  },
+  openField: (selectedObjectId, selectedArtifactId) => {
+    set({
+      selectedObjectId,
+      selectedArtifactId,
       metadataSection: 'objects',
       activeView: 'metadata',
     })

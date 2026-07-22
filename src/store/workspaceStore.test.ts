@@ -162,6 +162,17 @@ describe('workspaceStore persistence', () => {
     expect(projectRepository.save).toHaveBeenCalledTimes(4)
   })
 
+  it('opens the object workspace with a relationship field selected', () => {
+    useWorkspaceStore.getState().openField('facility-object-id', 'borrower-field-id')
+
+    expect(useWorkspaceStore.getState()).toMatchObject({
+      activeView: 'metadata',
+      metadataSection: 'objects',
+      selectedObjectId: 'facility-object-id',
+      selectedArtifactId: 'borrower-field-id',
+    })
+  })
+
   it('persists field edits, duplication, and deletion', async () => {
     vi.mocked(projectRepository.save).mockResolvedValue()
     await useWorkspaceStore.getState().createProject({

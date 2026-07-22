@@ -28,10 +28,13 @@ describe('connected metadata dialogs', () => {
     useWorkspaceStore.setState({ status: 'ready', errorMessage: null, createRelationship })
 
     render(<RelationshipDialog objects={[account, facility]} fields={[]} onClose={vi.fn()} />)
-    fireEvent.change(screen.getByLabelText('Child object'), { target: { value: facility.id } })
-    fireEvent.change(screen.getByLabelText('Related object'), { target: { value: account.id } })
+    fireEvent.change(screen.getByLabelText(/Field lives on/), { target: { value: facility.id } })
+    fireEvent.change(screen.getByLabelText(/References object/), { target: { value: account.id } })
     fireEvent.change(screen.getByLabelText('Field label'), { target: { value: 'Borrower' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Create relationship' }))
+    expect(
+      screen.getByText(/This creates or updates a Salesforce field on the child object/),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Create relationship field' }))
 
     await waitFor(() => {
       expect(createRelationship).toHaveBeenCalledWith(

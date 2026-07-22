@@ -14,6 +14,7 @@ export function Inspector() {
   const selectedSolutionId = useWorkspaceStore((state) => state.selectedSolutionId)
   const selectedArtifactId = useWorkspaceStore((state) => state.selectedArtifactId)
   const selectArtifact = useWorkspaceStore((state) => state.selectArtifact)
+  const openField = useWorkspaceStore((state) => state.openField)
   const selectedSolution = blueprint?.solutions.find(
     (solution) => solution.id === selectedSolutionId,
   )
@@ -131,13 +132,10 @@ export function Inspector() {
           </h2>
           <dl className="mt-5 space-y-4 text-sm">
             <InspectorProperty
-              label="Child object"
+              label="Field lives on"
               value={childObject?.label ?? 'Missing object'}
             />
-            <InspectorProperty
-              label="Related object"
-              value={parentObject?.label ?? 'Missing object'}
-            />
+            <InspectorProperty label="References" value={parentObject?.label ?? 'Missing object'} />
             <InspectorProperty
               label="Field API name"
               monospace
@@ -152,6 +150,16 @@ export function Inspector() {
               value={relationship.description ?? relationshipField?.description ?? 'Not added yet'}
             />
           </dl>
+          {relationshipField && childObject ? (
+            <button
+              className="button-secondary mt-5 w-full"
+              onClick={() => {
+                openField(childObject.id, relationshipField.id)
+              }}
+            >
+              Open underlying field
+            </button>
+          ) : null}
         </div>
       ) : globalValueSet ? (
         <div className="mt-5">

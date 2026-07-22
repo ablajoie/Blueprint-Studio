@@ -40,6 +40,7 @@ export function RelationshipsWorkspace({ solution }: { solution: Solution }) {
   const blueprint = useWorkspaceStore((state) => state.blueprint)
   const selectedArtifactId = useWorkspaceStore((state) => state.selectedArtifactId)
   const selectArtifact = useWorkspaceStore((state) => state.selectArtifact)
+  const openField = useWorkspaceStore((state) => state.openField)
   const deleteRelationship = useWorkspaceStore((state) => state.deleteRelationship)
   const status = useWorkspaceStore((state) => state.status)
   const errorMessage = useWorkspaceStore((state) => state.errorMessage)
@@ -60,8 +61,9 @@ export function RelationshipsWorkspace({ solution }: { solution: Solution }) {
         <WorkspaceHeading
           solution={solution}
           title="Relationships"
-          description="Connect objects through the Salesforce fields that implement each relationship."
-          actionLabel="New Relationship"
+          description="Review how objects connect and open the Salesforce field that implements each relationship."
+          actionLabel="Create relationship field"
+          actionVariant="secondary"
           actionDisabled={objects.length === 0 || busy}
           onAction={() => {
             if (status === 'error') clearError()
@@ -70,10 +72,15 @@ export function RelationshipsWorkspace({ solution }: { solution: Solution }) {
         />
         <MetadataTabs active="relationships" />
         {version ? <MetadataChecks version={version} /> : null}
+        <div className="mt-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900">
+          <span className="font-semibold">Relationships are fields.</span> Create a lookup or
+          master-detail field from an object, or use this page as an architecture-first shortcut.
+          Junction objects are modeled as custom objects with two relationship fields.
+        </div>
         <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <ListHeader
-            title="Object relationships"
-            description={`${String(relationships.length)} modeled in this design version`}
+            title="Relationship catalog"
+            description={`${String(relationships.length)} field-backed connections in this design version`}
           >
             {selected ? (
               <ArtifactActions
@@ -93,9 +100,10 @@ export function RelationshipsWorkspace({ solution }: { solution: Solution }) {
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-6 py-3 font-semibold">Relationship field</th>
-                  <th className="px-6 py-3 font-semibold">Child object</th>
-                  <th className="px-6 py-3 font-semibold">Related object</th>
+                  <th className="px-6 py-3 font-semibold">Field lives on</th>
+                  <th className="px-6 py-3 font-semibold">References</th>
                   <th className="px-6 py-3 font-semibold">Type</th>
+                  <th className="px-6 py-3 text-right font-semibold">Field</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -131,6 +139,21 @@ export function RelationshipsWorkspace({ solution }: { solution: Solution }) {
                       <td className="px-6 py-4 capitalize text-slate-600">
                         {relationship.type.replaceAll('-', ' ')}
                       </td>
+                      <td className="px-6 py-4 text-right">
+                        {field && child ? (
+                          <button
+                            className="font-semibold text-blue-700 hover:underline"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              openField(child.id, field.id)
+                            }}
+                          >
+                            Open field
+                          </button>
+                        ) : (
+                          <span className="text-slate-400">Unavailable</span>
+                        )}
+                      </td>
                     </tr>
                   )
                 })}
@@ -139,8 +162,8 @@ export function RelationshipsWorkspace({ solution }: { solution: Solution }) {
           ) : (
             <EmptyState
               title="Let's connect your objects"
-              description="Add a lookup, master-detail, external lookup, or indirect lookup and Blueprint will create the underlying field with it."
-              action="New Relationship"
+              description="Create a relationship field from an object, or use this shortcut to choose both objects and create the underlying field in one step."
+              action="Create relationship field"
               disabled={objects.length === 0}
               onAction={() => {
                 setCreating(true)
@@ -386,6 +409,7 @@ function WorkspaceHeading({
   title,
   description,
   actionLabel,
+  actionVariant = 'primary',
   actionDisabled,
   onAction,
 }: {
@@ -393,6 +417,7 @@ function WorkspaceHeading({
   title: string
   description: string
   actionLabel: string
+  actionVariant?: 'primary' | 'secondary'
   actionDisabled: boolean
   onAction: () => void
 }) {
@@ -405,7 +430,11 @@ function WorkspaceHeading({
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">{title}</h1>
         <p className="mt-3 text-slate-600">{description}</p>
       </div>
-      <button className="button-primary" onClick={onAction} disabled={actionDisabled}>
+      <button
+        className={actionVariant === 'primary' ? 'button-primary' : 'button-secondary'}
+        onClick={onAction}
+        disabled={actionDisabled}
+      >
         {actionLabel}
       </button>
     </div>

@@ -59,8 +59,8 @@ export function RelationshipDialog({
 
   return (
     <Modal
-      title={relationship ? 'Edit relationship' : 'New relationship'}
-      description="Define the relationship and its underlying Salesforce field together."
+      title={relationship ? 'Edit relationship field' : 'Create relationship field'}
+      description="This creates or updates a Salesforce field on the child object. The Relationships page is the architectural view of that same field."
       onClose={onClose}
     >
       <form onSubmit={(event) => void submit(event)}>
@@ -74,7 +74,12 @@ export function RelationshipDialog({
             </div>
           ) : null}
           <div className="grid grid-cols-2 gap-5">
-            <Field label="Child object" hint={relationship ? 'Fixed after creation' : ''}>
+            <Field
+              label="Field lives on"
+              hint={
+                relationship ? 'Child/detail object · fixed after creation' : 'Child/detail object'
+              }
+            >
               <Select
                 required
                 disabled={Boolean(relationship)}
@@ -91,7 +96,7 @@ export function RelationshipDialog({
                 ))}
               </Select>
             </Field>
-            <Field label="Related object">
+            <Field label="References object" hint="Parent/master object">
               <Select
                 required
                 value={parentObjectId}
@@ -190,7 +195,7 @@ export function RelationshipDialog({
             className="button-primary"
             disabled={saving || !childObjectId || !parentObjectId || !fieldLabel.trim()}
           >
-            {saving ? 'Saving…' : relationship ? 'Save changes' : 'Create relationship'}
+            {saving ? 'Saving…' : relationship ? 'Save field changes' : 'Create relationship field'}
           </button>
         </DialogActions>
       </form>
