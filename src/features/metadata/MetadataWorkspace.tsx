@@ -7,6 +7,7 @@ import { useWorkspaceStore } from '../../store/workspaceStore'
 import { ObjectDialog } from './CreateObjectDialog'
 import { CreateFieldDialog, FieldDialog } from './CreateFieldDialog'
 import { DeleteFieldDialog } from './DeleteFieldDialog'
+import { SchemaDiagram } from './SchemaDiagram'
 import {
   GlobalValueSetsWorkspace,
   MetadataChecks,
@@ -39,9 +40,11 @@ export function MetadataWorkspace({
   const [deletingFieldId, setDeletingFieldId] = useState<string | null>(null)
   const [editingObject, setEditingObject] = useState(false)
   const [deletingObject, setDeletingObject] = useState(false)
+  const [objectView, setObjectView] = useState<'table' | 'diagram'>('table')
   const version = solution.versions.at(-1)
   const objects = version?.metadata.objects ?? []
   const fields = version?.metadata.fields ?? []
+  const relationships = version?.metadata.relationships ?? []
   const globalValueSets = version?.metadata.globalValueSets ?? []
   const selectedObject = objects.find((object) => object.id === selectedObjectId)
   const editingField = fields.find((field) => field.id === editingFieldId)
@@ -185,9 +188,21 @@ export function MetadataWorkspace({
               {objects.length} modeled in this design version
             </p>
           </div>
+          <ObjectViewToggle value={objectView} onChange={setObjectView} />
         </div>
         {objects.length ? (
-          <ObjectTable objects={objects} fields={fields} onSelect={openObject} />
+          objectView === 'table' ? (
+            <ObjectTable objects={objects} fields={fields} onSelect={openObject} />
+          ) : (
+            <SchemaDiagram
+              objects={objects}
+              fields={fields}
+              relationships={relationships}
+              selectedArtifactId={selectedArtifactId}
+              onOpenObject={openObject}
+              onSelectRelationship={selectArtifact}
+            />
+          )
         ) : (
           <div className="px-6 py-14 text-center">
             <div className="mx-auto grid size-12 place-items-center rounded-xl bg-blue-50 text-xl text-blue-700">
@@ -205,6 +220,62 @@ export function MetadataWorkspace({
         )}
       </div>
     </section>
+  )
+}
+
+function ObjectViewToggle({
+  value,
+  onChange,
+}: {
+  value: 'table' | 'diagram'
+  onChange: (value: 'table' | 'diagram') => void
+}) {
+  return (
+    <div
+      className="inline-flex rounded-lg border border-slate-300 bg-slate-50 p-1"
+      role="group"
+      aria-label="Object view"
+    >
+      <ViewToggleButton
+        label="Table"
+        active={value === 'table'}
+        onClick={() => {
+          onChange('table')
+        }}
+      />
+      <ViewToggleButton
+        label="Diagram"
+        active={value === 'diagram'}
+        onClick={() => {
+          onChange('diagram')
+        }}
+      />
+    </div>
+  )
+}
+
+function ViewToggleButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className={
+        active
+          ? 'rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-blue-800 shadow-sm'
+          : 'rounded-md px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800'
+      }
+      aria-pressed={active}
+      onClick={onClick}
+    >
+      {label}
+    </button>
   )
 }
 

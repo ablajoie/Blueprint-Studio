@@ -7,6 +7,7 @@
 - Discovery document
 - Objects and fields
 - Relationships — implemented
+- Table and schema data-model views — implemented
 - Global value sets — implemented
 - Dependent picklist mappings — implemented
 - Basic layouts

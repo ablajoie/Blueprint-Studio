@@ -117,4 +117,63 @@ describe('App', () => {
       within(inspector).getByRole('heading', { name: 'Commitment Amount' }),
     ).toBeInTheDocument()
   })
+
+  it('switches from the object table to a connected schema diagram', () => {
+    const project = createBlueprint({ name: 'Lending', description: '', clouds: [] })
+    const solution = addSolution(project, { name: 'Core Model', description: '' })
+    const account = addObject(solution.blueprint, solution.solutionId, {
+      label: 'Account',
+      pluralLabel: 'Accounts',
+      apiName: 'Account',
+      kind: 'standard',
+      description: '',
+    })
+    const facility = addObject(account.blueprint, solution.solutionId, {
+      label: 'Facility',
+      pluralLabel: 'Facilities',
+      apiName: 'Facility__c',
+      kind: 'custom',
+      description: '',
+    })
+    const borrower = addField(facility.blueprint, solution.solutionId, {
+      objectId: facility.objectId,
+      label: 'Borrower',
+      apiName: 'Borrower__c',
+      dataType: 'lookup',
+      description: '',
+      helpText: '',
+      required: false,
+      defaultValue: '',
+      formula: '',
+      referenceToObjectId: account.objectId,
+      picklistValues: [],
+      relationshipName: 'Borrower',
+      relationshipDescription: '',
+    })
+    useWorkspaceStore.setState({
+      status: 'ready',
+      blueprint: borrower.blueprint,
+      projects: [summarizeProject(borrower.blueprint)],
+      selectedSolutionId: solution.solutionId,
+      selectedObjectId: null,
+      selectedArtifactId: null,
+      activeView: 'metadata',
+      metadataSection: 'objects',
+      errorMessage: null,
+      refreshProjects: vi.fn().mockResolvedValue(undefined),
+    })
+
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Diagram' }))
+    expect(screen.getByLabelText('Data model diagram')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Borrower relationship' }))
+
+    const inspector = screen.getByLabelText('Inspector')
+    expect(within(inspector).getByRole('heading', { name: 'Borrower' })).toBeInTheDocument()
+  })
 })
