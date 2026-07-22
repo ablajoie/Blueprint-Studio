@@ -8,7 +8,7 @@ A Salesforce professional can create a project and solution, capture discovery n
 
 ## Application foundation
 
-The repository includes a production-oriented React application with strict TypeScript, Vite, Tailwind CSS, React Router, Zustand, Dexie, ESLint, Prettier, and Vitest. The current walking skeleton includes a local project library and switcher; project, solution, object, and field lifecycle management; a rich-text Discovery workspace with local autosave; relationship design; table and schema views of the data model; global value sets; dependent picklist mappings; connected metadata checks; and dependency-aware destructive actions. All changes persist locally and immediately update the Solution Explorer and contextual inspector.
+The repository includes a production-oriented React application with strict TypeScript, Vite, Tailwind CSS, React Router, Zustand, Dexie, ESLint, Prettier, and Vitest. The current walking skeleton includes a local project library and switcher; project, solution, object, and field lifecycle management; a sectioned rich-text Discovery workspace with project templates and local autosave; relationship design; table and schema views of the data model; global value sets; dependent picklist mappings; connected metadata checks; and dependency-aware destructive actions. All changes persist locally and immediately update the Solution Explorer and contextual inspector.
 
 ### Local setup
 
@@ -84,4 +84,4 @@ Run `pnpm validate:schema` to validate the example project against `schemas/blue
 
 ## Current capabilities
 
-Version 0.1 currently supports Projects, Solutions, rich-text Discovery notes, Objects, Fields, Relationships, Global Value Sets, dependent picklists, and clickable schema visualization. The next vertical slices add basic Layouts, Requirements, Decisions, and configurable Health Rules.
+Version 0.1 currently supports Projects, Solutions, configurable sectioned Discovery notes, Objects, Fields, Relationships, Global Value Sets, dependent picklists, and clickable schema visualization. The next vertical slices add basic Layouts, Requirements, Decisions, and configurable Health Rules.

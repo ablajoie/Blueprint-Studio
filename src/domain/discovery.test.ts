@@ -20,13 +20,16 @@ describe('discovery document', () => {
     const updated = updateDiscoveryDocument(
       solution.blueprint,
       solution.solutionId,
-      '<h2>Problem statement</h2><p>Capture the lending request.</p>',
+      { 'discovery-overview': '<p>Capture the lending request.</p>' },
       { now: () => '2026-01-02T00:00:00.000Z' },
     )
 
     expect(updated.solutions[0]?.versions[0]?.discovery).toEqual({
-      format: 'html',
-      content: '<h2>Problem statement</h2><p>Capture the lending request.</p>',
+      format: 'json-rich-text',
+      content: {
+        version: 1,
+        sections: { 'discovery-overview': '<p>Capture the lending request.</p>' },
+      },
       assetIds: ['existing-asset'],
     })
     expect(updated.project.updatedAt).toBe('2026-01-02T00:00:00.000Z')
@@ -37,11 +40,9 @@ describe('discovery document', () => {
     const solution = addSolution(project, { name: 'Core model', description: '' })
 
     expect(() =>
-      updateDiscoveryDocument(
-        solution.blueprint,
-        solution.solutionId,
-        'x'.repeat(MAX_DISCOVERY_CONTENT_LENGTH + 1),
-      ),
+      updateDiscoveryDocument(solution.blueprint, solution.solutionId, {
+        'discovery-overview': 'x'.repeat(MAX_DISCOVERY_CONTENT_LENGTH + 1),
+      }),
     ).toThrow('Discovery notes are too large')
   })
 })

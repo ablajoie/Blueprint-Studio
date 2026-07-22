@@ -39,4 +39,6 @@ Projects contain solutions. Solutions contain one or more immutable-or-draft des
 
 ## Discovery documents
 
-Each solution version owns one Discovery document. The alpha editor stores sanitized semantic HTML alongside the version and autosaves it with the local project. Embedded raster images are size-limited and stored as data URLs for the local-first alpha; portable export can migrate them into packaged assets without changing the Discovery document boundary.
+Each project owns an ordered Discovery section template while each solution version owns the content entered in those sections. This keeps reusable guidance at the project level and solution-specific personas, questions, requirements, security notes, risks, and scope boundaries with the design they describe.
+
+The editor stores sanitized semantic HTML in a versioned section map and autosaves it with the local project. Legacy single-document HTML is preserved in the first visible section. Embedded raster images are size-limited and stored as data URLs for the local-first alpha; portable export can migrate them into packaged assets without changing the Discovery document boundary.

@@ -18,12 +18,12 @@ export function DiscoveryToolbar({
 }: DiscoveryToolbarProps) {
   return (
     <div
-      className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50 px-4 py-3"
+      className="sticky top-0 z-30 flex h-14 items-center gap-1 overflow-x-auto rounded-t-xl border-b border-slate-200 bg-slate-50 px-4 py-2 shadow-sm"
       role="toolbar"
       aria-label="Discovery formatting"
     >
       <select
-        className="mr-2 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        className="mr-2 shrink-0 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
         aria-label="Text style"
         defaultValue="p"
         onMouseDown={onCaptureSelection}
@@ -54,6 +54,15 @@ export function DiscoveryToolbar({
       >
         <em>I</em>
       </ToolbarButton>
+      <ToolbarButton
+        label="Underline"
+        shortcut="Ctrl+U"
+        onClick={() => {
+          onCommand('underline')
+        }}
+      >
+        <span className="underline underline-offset-2">U</span>
+      </ToolbarButton>
       <ToolbarDivider />
       <ToolbarButton
         label="Bulleted list"
@@ -61,7 +70,7 @@ export function DiscoveryToolbar({
           onCommand('insertUnorderedList')
         }}
       >
-        • List
+        <ListIcon ordered={false} />
       </ToolbarButton>
       <ToolbarButton
         label="Numbered list"
@@ -69,17 +78,17 @@ export function DiscoveryToolbar({
           onCommand('insertOrderedList')
         }}
       >
-        1. List
+        <ListIcon ordered />
       </ToolbarButton>
       <ToolbarDivider />
-      <ToolbarButton label="Add link" onClick={onInsertLink}>
-        Link
-      </ToolbarButton>
       <ToolbarButton label="Insert table" onClick={onInsertTable}>
         Table
       </ToolbarButton>
       <ToolbarButton label="Insert image" onClick={onInsertImage}>
         Image
+      </ToolbarButton>
+      <ToolbarButton label="Add link" onClick={onInsertLink}>
+        Link
       </ToolbarButton>
     </div>
   )
@@ -99,7 +108,7 @@ function ToolbarButton({
   return (
     <button
       type="button"
-      className="rounded-md px-2.5 py-1.5 text-sm text-slate-700 hover:bg-white hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-200"
+      className="shrink-0 rounded-md px-2.5 py-1.5 text-sm text-slate-700 hover:bg-white hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-200"
       aria-label={label}
       title={shortcut ? `${label} (${shortcut})` : label}
       onMouseDown={(event: MouseEvent<HTMLButtonElement>) => {
@@ -113,5 +122,23 @@ function ToolbarButton({
 }
 
 function ToolbarDivider() {
-  return <span className="mx-1 h-6 w-px bg-slate-300" aria-hidden="true" />
+  return <span className="mx-1 h-6 w-px shrink-0 bg-slate-300" aria-hidden="true" />
+}
+
+function ListIcon({ ordered }: { ordered: boolean }) {
+  return (
+    <span
+      className="grid w-8 grid-cols-[0.75rem_1fr] items-center gap-x-1 gap-y-0.5"
+      aria-hidden="true"
+    >
+      {[1, 2, 3].map((item) => (
+        <span key={item} className="contents">
+          <span className="text-right text-[9px] leading-none">
+            {ordered ? `${String(item)}.` : '•'}
+          </span>
+          <span className="h-px w-4 bg-current opacity-70" />
+        </span>
+      ))}
+    </span>
+  )
 }

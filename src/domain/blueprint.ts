@@ -2,6 +2,7 @@ export type UUID = string
 export type ISODateTime = string
 
 export type NamingStrategy = 'salesforce-first' | 'business-first' | 'hybrid'
+export type DiscoverySectionContentType = 'rich-text' | 'table'
 export type SolutionStatus = 'discovery' | 'draft' | 'review' | 'ready' | 'archived'
 export type ObjectKind =
   'standard' | 'custom' | 'external' | 'big-object' | 'platform-event' | 'custom-metadata-type'
@@ -60,6 +61,16 @@ export interface ProjectSettings {
   namingStrategy: NamingStrategy
   autoGenerateApiNames: boolean
   healthRules: HealthRule[]
+  discoverySections?: DiscoverySectionDefinition[]
+}
+
+export interface DiscoverySectionDefinition {
+  id: UUID
+  title: string
+  description: string
+  enabled: boolean
+  contentType: DiscoverySectionContentType
+  tableColumns?: string[]
 }
 
 export interface Solution {
@@ -92,8 +103,13 @@ export interface SolutionVersion {
 
 export interface DiscoveryDocument {
   format: 'html' | 'json-rich-text'
-  content: string | Record<string, unknown>
+  content: string | DiscoverySectionDocumentContent | Record<string, unknown>
   assetIds: UUID[]
+}
+
+export interface DiscoverySectionDocumentContent {
+  version: 1
+  sections: Record<UUID, string>
 }
 
 export interface MetadataModel {

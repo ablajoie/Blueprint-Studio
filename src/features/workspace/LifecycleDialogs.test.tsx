@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { Project, SalesforceObject, Solution } from '../../domain/blueprint'
 import { useWorkspaceStore } from '../../store/workspaceStore'
+import { createBlueprint } from '../../domain/blueprintFactory'
 import { ObjectDialog } from '../metadata/CreateObjectDialog'
 import { ProjectDialog } from '../projects/CreateProjectDialog'
 import { SolutionDialog } from '../solutions/CreateSolutionDialog'
@@ -73,6 +74,37 @@ describe('lifecycle detail editors', () => {
         name: solution.name,
         description: 'Updated solution details',
       })
+    })
+  })
+
+  it('configures the project Discovery template in its own tab', async () => {
+    const blueprint = createBlueprint({ name: project.name, description: '', clouds: [] })
+    blueprint.project = project
+    const updateProject = vi.fn().mockResolvedValue(undefined)
+    const updateDiscoverySections = vi.fn().mockResolvedValue(undefined)
+    useWorkspaceStore.setState({
+      blueprint,
+      status: 'ready',
+      errorMessage: null,
+      updateProject,
+      updateDiscoverySections,
+    })
+    render(<ProjectDialog project={project} initialTab="discovery" onClose={vi.fn()} />)
+
+    expect(screen.getByRole('tab', { name: 'Discovery template' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    fireEvent.click(screen.getByRole('button', { name: '+ Add section' }))
+    fireEvent.change(screen.getByLabelText('Section 10 title'), {
+      target: { value: 'Implementation Notes' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    await waitFor(() => {
+      expect(updateDiscoverySections).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ title: 'Implementation Notes' })]),
+      )
     })
   })
 

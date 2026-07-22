@@ -6,6 +6,9 @@ export type RichTextCommand =
   | 'insertOrderedList'
   | 'insertUnorderedList'
   | 'italic'
+  | 'underline'
+  | 'indentListItem'
+  | 'outdentListItem'
 
 export function applyRichTextCommand(
   editor: HTMLElement,
@@ -17,8 +20,11 @@ export function applyRichTextCommand(
   if (command === 'insertHTML') return insertHtml(range, value)
   if (command === 'bold') return wrapSelection(range, 'strong')
   if (command === 'italic') return wrapSelection(range, 'em')
+  if (command === 'underline') return wrapSelection(range, 'u')
   if (command === 'createLink') return wrapSelection(range, 'a', { href: value })
   if (command === 'formatBlock') return formatBlock(editor, range, value)
+  if (command === 'indentListItem') return indentListItem(editor, range)
+  if (command === 'outdentListItem') return outdentListItem(editor, range)
   return toggleList(editor, range, command === 'insertOrderedList' ? 'ol' : 'ul')
 }
 
@@ -49,7 +55,7 @@ function insertHtml(range: Range, html: string): Range {
 
 function wrapSelection(
   range: Range,
-  tagName: 'a' | 'em' | 'strong',
+  tagName: 'a' | 'em' | 'strong' | 'u',
   attributes: Record<string, string> = {},
 ): Range {
   const wrapper = document.createElement(tagName)
@@ -72,6 +78,50 @@ function wrapSelection(
   const nextRange = document.createRange()
   nextRange.selectNodeContents(wrapper)
   return nextRange
+}
+
+function indentListItem(editor: HTMLElement, range: Range): Range {
+  const item = activeListItem(editor, range)
+  const list = item?.parentElement
+  const previous = item?.previousElementSibling
+  if (!item || !list || previous?.tagName !== 'LI') return range
+  if (list.parentElement?.closest('li')) return range
+
+  const tagName = list.tagName.toLowerCase()
+  let nested = Array.from(previous.children).find(
+    (child) => child.tagName.toLowerCase() === tagName,
+  ) as HTMLElement | undefined
+  if (!nested) {
+    nested = document.createElement(tagName)
+    previous.appendChild(nested)
+  }
+  nested.appendChild(item)
+  if (!list.children.length) list.remove()
+  return caretAtEnd(item)
+}
+
+function outdentListItem(editor: HTMLElement, range: Range): Range {
+  const item = activeListItem(editor, range)
+  const nestedList = item?.parentElement
+  const parentItem = nestedList?.parentElement
+  const outerList = parentItem?.parentElement
+  if (
+    !item ||
+    !nestedList ||
+    parentItem?.tagName !== 'LI' ||
+    !outerList ||
+    !['OL', 'UL'].includes(outerList.tagName)
+  ) {
+    return range
+  }
+  parentItem.insertAdjacentElement('afterend', item)
+  if (!nestedList.children.length) nestedList.remove()
+  return caretAtEnd(item)
+}
+
+function activeListItem(editor: HTMLElement, range: Range): HTMLElement | null {
+  const item = closestElement(range.startContainer)?.closest('li')
+  return item instanceof HTMLElement && editor.contains(item) ? item : null
 }
 
 function formatBlock(editor: HTMLElement, range: Range, value: string): Range {

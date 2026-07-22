@@ -5,12 +5,18 @@ import {
   useRef,
   useState,
   type ClipboardEvent,
+  type KeyboardEvent,
   type SyntheticEvent,
 } from 'react'
 import { DialogActions, Field, TextInput } from '../../components/ui/FormControls'
 import { Modal } from '../../components/ui/Modal'
-import type { Solution } from '../../domain/blueprint'
+import type { ProjectSettings, Solution } from '../../domain/blueprint'
+import {
+  readDiscoverySectionContent,
+  resolveDiscoverySections,
+} from '../../domain/discoveryTemplate'
 import { useWorkspaceStore } from '../../store/workspaceStore'
+import { DiscoverySectionEditor } from './DiscoverySectionEditor'
 import { normalizeDiscoveryLink, sanitizeDiscoveryHtml } from './discoverySanitizer'
 import { DiscoveryToolbar } from './DiscoveryToolbar'
 import { applyRichTextCommand, showRange, type RichTextCommand } from './richTextCommands'
@@ -21,33 +27,60 @@ const supportedImageTypes = new Set(['image/gif', 'image/jpeg', 'image/png', 'im
 
 type SaveState = 'saved' | 'unsaved' | 'saving' | 'error'
 
-export function DiscoveryWorkspace({ solution }: { solution: Solution }) {
+type DiscoveryWorkspaceProps = {
+  solution: Solution
+  settings: ProjectSettings
+  onConfigureSections: () => void
+}
+
+export function DiscoveryWorkspace({
+  solution,
+  settings,
+  onConfigureSections,
+}: DiscoveryWorkspaceProps) {
   const updateDiscovery = useWorkspaceStore((state) => state.updateDiscovery)
   const version = solution.versions.at(-1)
-  const initialContentRef = useRef(
-    sanitizeDiscoveryHtml(
-      version?.discovery.format === 'html' && typeof version.discovery.content === 'string'
-        ? version.discovery.content
-        : '',
-    ),
+  const definitions = useMemo(() => resolveDiscoverySections(settings), [settings])
+  const visibleDefinitions = definitions.filter((section) => section.enabled)
+  const documentSections = useMemo(
+    () =>
+      sanitizeSections(
+        version
+          ? readDiscoverySectionContent(version.discovery, definitions)
+          : Object.fromEntries(definitions.map((section) => [section.id, ''])),
+      ),
+    [definitions, version],
   )
-  const editorRef = useRef<HTMLDivElement>(null)
+  const initialSectionsRef = useRef(documentSections)
+  const editorRefs = useRef(new Map<string, HTMLDivElement>())
   const imageInputRef = useRef<HTMLInputElement>(null)
   const selectionRef = useRef<Range | null>(null)
+  const activeSectionIdRef = useRef(visibleDefinitions[0]?.id ?? null)
   const autoSaveTimerRef = useRef<number | null>(null)
-  const latestDraftRef = useRef(initialContentRef.current)
-  const lastSavedRef = useRef(initialContentRef.current)
+  const latestDraftRef = useRef(initialSectionsRef.current)
+  const lastSavedRef = useRef(initialSectionsRef.current)
   const saveRequestRef = useRef(0)
-  const [draftHtml, setDraftHtml] = useState(initialContentRef.current)
+  const [draftSections, setDraftSections] = useState(initialSectionsRef.current)
   const [saveState, setSaveState] = useState<SaveState>('saved')
   const [editorError, setEditorError] = useState<string | null>(null)
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [linkValue, setLinkValue] = useState('')
 
-  const saveHtml = useCallback(
-    async (html: string) => {
-      const sanitized = sanitizeDiscoveryHtml(html)
-      if (sanitized === lastSavedRef.current) {
+  useEffect(
+    () => () => {
+      if (autoSaveTimerRef.current !== null) window.clearTimeout(autoSaveTimerRef.current)
+      const sanitized = sanitizeSections(latestDraftRef.current)
+      if (!sameSectionContent(sanitized, lastSavedRef.current)) {
+        void useWorkspaceStore.getState().updateDiscovery(sanitized)
+      }
+    },
+    [solution.id],
+  )
+
+  const saveSections = useCallback(
+    async (sections: Record<string, string>) => {
+      const sanitized = sanitizeSections(sections)
+      if (sameSectionContent(sanitized, lastSavedRef.current)) {
         setSaveState('saved')
         return
       }
@@ -55,14 +88,15 @@ export function DiscoveryWorkspace({ solution }: { solution: Solution }) {
       setSaveState('saving')
       await updateDiscovery(sanitized)
       if (requestId !== saveRequestRef.current) return
-      if (html !== latestDraftRef.current) return
+      if (!sameSectionContent(sections, latestDraftRef.current)) return
       if (useWorkspaceStore.getState().status === 'ready') {
         lastSavedRef.current = sanitized
         latestDraftRef.current = sanitized
-        setDraftHtml(sanitized)
-        if (editorRef.current && editorRef.current.innerHTML !== sanitized) {
-          editorRef.current.innerHTML = sanitized
-        }
+        setDraftSections(sanitized)
+        editorRefs.current.forEach((editor, sectionId) => {
+          const content = sanitized[sectionId] ?? ''
+          if (editor.innerHTML !== content) editor.innerHTML = content
+        })
         setSaveState('saved')
       } else {
         setSaveState('error')
@@ -71,58 +105,90 @@ export function DiscoveryWorkspace({ solution }: { solution: Solution }) {
     [updateDiscovery],
   )
 
-  useEffect(() => {
-    if (editorRef.current) editorRef.current.innerHTML = initialContentRef.current
-  }, [])
-
-  useEffect(
-    () => () => {
-      if (autoSaveTimerRef.current !== null) window.clearTimeout(autoSaveTimerRef.current)
-      const sanitized = sanitizeDiscoveryHtml(latestDraftRef.current)
-      if (sanitized !== lastSavedRef.current) {
-        void useWorkspaceStore.getState().updateDiscovery(sanitized)
-      }
-    },
-    [solution.id],
-  )
-
-  const scheduleSave = (html: string) => {
-    latestDraftRef.current = html
-    setDraftHtml(html)
+  const scheduleSave = (sectionId: string, html: string) => {
+    const next = { ...latestDraftRef.current, [sectionId]: html }
+    latestDraftRef.current = next
+    setDraftSections(next)
     setSaveState('unsaved')
     setEditorError(null)
     if (autoSaveTimerRef.current !== null) window.clearTimeout(autoSaveTimerRef.current)
     autoSaveTimerRef.current = window.setTimeout(() => {
       autoSaveTimerRef.current = null
-      void saveHtml(latestDraftRef.current)
+      void saveSections(latestDraftRef.current)
     }, AUTO_SAVE_DELAY)
   }
 
-  const captureSelection = () => {
-    const editor = editorRef.current
+  const registerEditor = useCallback((sectionId: string, editor: HTMLDivElement | null) => {
+    if (editor) editorRefs.current.set(sectionId, editor)
+    else editorRefs.current.delete(sectionId)
+  }, [])
+
+  const captureSelection = (preferredSectionId?: string) => {
     const selection = window.getSelection()
-    if (!editor || !selection?.rangeCount) return
+    if (!selection?.rangeCount) return
     const range = selection.getRangeAt(0)
-    if (editor.contains(range.commonAncestorContainer)) selectionRef.current = range.cloneRange()
+    const entry = preferredSectionId
+      ? ([preferredSectionId, editorRefs.current.get(preferredSectionId)] as const)
+      : Array.from(editorRefs.current.entries()).find(([, editor]) =>
+          editor.contains(range.commonAncestorContainer),
+        )
+    if (!entry?.[1] || !entry[1].contains(range.commonAncestorContainer)) return
+    activeSectionIdRef.current = entry[0]
+    selectionRef.current = range.cloneRange()
+  }
+
+  const activeEditor = () => {
+    const activeId = activeSectionIdRef.current ?? visibleDefinitions[0]?.id
+    const selected = activeId ? editorRefs.current.get(activeId) : null
+    if (selected) return selected
+    const fallback = visibleDefinitions[0]?.id
+    if (fallback) activeSectionIdRef.current = fallback
+    return fallback ? (editorRefs.current.get(fallback) ?? null) : null
   }
 
   const restoreSelection = () => {
-    const editor = editorRef.current
-    if (!editor) return
+    const editor = activeEditor()
+    if (!editor) return null
     editor.focus()
     const selection = window.getSelection()
     selection?.removeAllRanges()
-    if (selectionRef.current) selection?.addRange(selectionRef.current)
+    if (selectionRef.current && editor.contains(selectionRef.current.commonAncestorContainer)) {
+      selection?.addRange(selectionRef.current)
+    }
+    return editor
   }
 
   const runCommand = (command: RichTextCommand, value?: string) => {
-    restoreSelection()
-    const editor = editorRef.current
+    const editor = restoreSelection()
     if (!editor) return
     const nextRange = applyRichTextCommand(editor, selectionRef.current, command, value)
     selectionRef.current = nextRange.cloneRange()
     showRange(nextRange)
-    scheduleSave(editor.innerHTML)
+    const sectionId = activeSectionIdRef.current
+    if (sectionId) scheduleSave(sectionId, editor.innerHTML)
+  }
+
+  const handleEditorKeyDown = (event: KeyboardEvent<HTMLDivElement>, sectionId: string) => {
+    const shortcut = (event.ctrlKey || event.metaKey) && !event.altKey
+    const shortcutCommand = shortcut
+      ? ({ b: 'bold', i: 'italic', u: 'underline' } as const)[
+          event.key.toLowerCase() as 'b' | 'i' | 'u'
+        ]
+      : undefined
+    if (shortcutCommand) {
+      event.preventDefault()
+      captureSelection(sectionId)
+      runCommand(shortcutCommand)
+      return
+    }
+    if (event.key !== 'Tab') return
+    captureSelection(sectionId)
+    const editor = editorRefs.current.get(sectionId)
+    const range = selectionRef.current
+    const listItem = closestListItem(editor, range)
+    if (!listItem) return
+    event.preventDefault()
+    runCommand(event.shiftKey ? 'outdentListItem' : 'indentListItem')
   }
 
   const insertTable = () => {
@@ -152,12 +218,6 @@ export function DiscoveryWorkspace({ solution }: { solution: Solution }) {
     setLinkDialogOpen(false)
   }
 
-  const openLinkDialog = () => {
-    captureSelection()
-    setEditorError(null)
-    setLinkDialogOpen(true)
-  }
-
   const insertImage = async (file: File) => {
     if (!supportedImageTypes.has(file.type)) {
       setEditorError('Use a PNG, JPEG, GIF, or WebP image.')
@@ -178,7 +238,7 @@ export function DiscoveryWorkspace({ solution }: { solution: Solution }) {
     }
   }
 
-  const wordCount = useMemo(() => discoveryWordCount(draftHtml), [draftHtml])
+  const wordCount = useMemo(() => discoveryWordCount(draftSections), [draftSections])
 
   return (
     <>
@@ -194,8 +254,11 @@ export function DiscoveryWorkspace({ solution }: { solution: Solution }) {
               becomes structured metadata.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-3">
             <SaveStatus state={saveState} />
+            <button type="button" className="button-secondary" onClick={onConfigureSections}>
+              Configure sections
+            </button>
             <button
               type="button"
               className="button-secondary"
@@ -205,7 +268,7 @@ export function DiscoveryWorkspace({ solution }: { solution: Solution }) {
                   window.clearTimeout(autoSaveTimerRef.current)
                   autoSaveTimerRef.current = null
                 }
-                void saveHtml(latestDraftRef.current)
+                void saveSections(latestDraftRef.current)
               }}
             >
               Save now
@@ -213,11 +276,17 @@ export function DiscoveryWorkspace({ solution }: { solution: Solution }) {
           </div>
         </div>
 
-        <div className="mt-7 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="mt-7 rounded-xl border border-slate-200 bg-white shadow-sm">
           <DiscoveryToolbar
-            onCaptureSelection={captureSelection}
+            onCaptureSelection={() => {
+              captureSelection()
+            }}
             onCommand={runCommand}
-            onInsertLink={openLinkDialog}
+            onInsertLink={() => {
+              captureSelection()
+              setEditorError(null)
+              setLinkDialogOpen(true)
+            }}
             onInsertTable={insertTable}
             onInsertImage={() => {
               captureSelection()
@@ -232,25 +301,36 @@ export function DiscoveryWorkspace({ solution }: { solution: Solution }) {
               {editorError}
             </div>
           ) : null}
-          <div
-            ref={editorRef}
-            className="discovery-editor min-h-[32rem] px-10 py-9 outline-none"
-            contentEditable
-            suppressContentEditableWarning
-            role="textbox"
-            aria-label="Discovery notes editor"
-            aria-multiline="true"
-            data-placeholder="Start with the problem, workshop notes, open questions, or anything the team is still working through…"
-            onInput={(event) => {
-              scheduleSave(event.currentTarget.innerHTML)
-            }}
-            onKeyUp={captureSelection}
-            onMouseUp={captureSelection}
-            onPaste={(event) => {
-              handlePaste(event, runCommand)
-            }}
-          />
-          <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-3 text-xs text-slate-500">
+          {visibleDefinitions.length ? (
+            <div>
+              {visibleDefinitions.map((section) => (
+                <DiscoverySectionEditor
+                  key={section.id}
+                  section={section}
+                  initialHtml={draftSections[section.id] ?? documentSections[section.id] ?? ''}
+                  onRegister={registerEditor}
+                  onInput={scheduleSave}
+                  onSelectionChange={captureSelection}
+                  onKeyDown={handleEditorKeyDown}
+                  onPaste={(event) => {
+                    captureSelection(section.id)
+                    handlePaste(event, runCommand)
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="px-8 py-16 text-center">
+              <h2 className="text-lg font-semibold text-slate-900">No sections are visible</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Open the project template and show at least one Discovery section.
+              </p>
+              <button type="button" className="button-primary mt-5" onClick={onConfigureSections}>
+                Configure sections
+              </button>
+            </div>
+          )}
+          <div className="flex items-center justify-between rounded-b-xl border-t border-slate-200 bg-slate-50 px-5 py-3 text-xs text-slate-500">
             <span>{wordCount} words</span>
             <span>Saved locally with this solution</span>
           </div>
@@ -346,8 +426,34 @@ function handlePaste(
     insert('insertHTML', sanitizeDiscoveryHtml(clipboardHtml))
     return
   }
-  const text = event.clipboardData.getData('text/plain')
-  insert('insertHTML', escapeText(text).replaceAll('\n', '<br>'))
+  const plainText = event.clipboardData.getData('text/plain')
+  insert('insertHTML', `<p>${escapeText(plainText).replaceAll('\n', '<br>')}</p>`)
+}
+
+function sanitizeSections(sections: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(sections).map(([sectionId, html]) => [sectionId, sanitizeDiscoveryHtml(html)]),
+  )
+}
+
+function sameSectionContent(first: Record<string, string>, second: Record<string, string>) {
+  const keys = new Set([...Object.keys(first), ...Object.keys(second)])
+  return Array.from(keys).every((key) => (first[key] ?? '') === (second[key] ?? ''))
+}
+
+function closestListItem(editor: HTMLElement | undefined, range: Range | null): Element | null {
+  if (!editor || !range || !editor.contains(range.commonAncestorContainer)) return null
+  const node = range.startContainer
+  const element = node instanceof Element ? node : node.parentElement
+  const listItem = element?.closest('li') ?? null
+  return listItem && editor.contains(listItem) ? listItem : null
+}
+
+function discoveryWordCount(sections: Record<string, string>): number {
+  const container = document.createElement('div')
+  container.innerHTML = Object.values(sections).join(' ')
+  const text = container.textContent?.trim() ?? ''
+  return text ? text.split(/\s+/).length : 0
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -355,7 +461,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
     const reader = new FileReader()
     reader.addEventListener('load', () => {
       if (typeof reader.result === 'string') resolve(reader.result)
-      else reject(new Error('Image data was unavailable'))
+      else reject(new Error('Unsupported image result'))
     })
     reader.addEventListener('error', () => {
       reject(reader.error ?? new Error('Image read failed'))
@@ -364,22 +470,15 @@ function readFileAsDataUrl(file: File): Promise<string> {
   })
 }
 
-function discoveryWordCount(html: string): number {
-  if (!html.trim()) return 0
-  const parsed = new DOMParser().parseFromString(html, 'text/html')
-  const text = parsed.body.textContent?.trim() ?? ''
-  return text ? text.split(/\s+/).length : 0
+function escapeAttribute(value: string): string {
+  return escapeText(value).replaceAll('`', '&#96;')
 }
 
-function escapeText(value: string) {
+function escapeText(value: string): string {
   return value
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;')
-}
-
-function escapeAttribute(value: string) {
-  return escapeText(value)
 }

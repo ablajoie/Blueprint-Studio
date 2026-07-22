@@ -1,6 +1,6 @@
 {
   "format": "blueprint-studio",
-  "schemaVersion": "0.2.0",
+  "schemaVersion": "0.3.0",
   "applicationVersion": "0.1.0",
   "project": {
     "id": "project-commercial-lending",
@@ -33,8 +33,13 @@
           "name": "Initial design",
           "status": "draft",
           "discovery": {
-            "format": "html",
-            "content": "<h1>Borrowing Structure</h1><p>Design a reusable structure connecting commercial relationships and facilities.</p>",
+            "format": "json-rich-text",
+            "content": {
+              "version": 1,
+              "sections": {
+                "discovery-overview": "<p>Design a reusable structure connecting commercial relationships and facilities.</p>"
+              }
+            },
             "assetIds": []
           },
           "requirements": [],
@@ -252,6 +257,79 @@
           "property": "helpText"
         },
         "message": "Consider adding help text."
+      }
+    ],
+    "discoverySections": [
+      {
+        "id": "discovery-overview",
+        "title": "Overview",
+        "description": "Capture the objective, desired outcomes, context, and high-level design direction.",
+        "enabled": true,
+        "contentType": "rich-text"
+      },
+      {
+        "id": "discovery-personas",
+        "title": "Personas",
+        "description": "Identify who the solution serves and the goals or pain points that matter to them.",
+        "enabled": true,
+        "contentType": "table",
+        "tableColumns": ["Persona", "Goals", "Needs or pain points"]
+      },
+      {
+        "id": "discovery-workflow",
+        "title": "Workflow",
+        "description": "Describe the current or proposed process before translating it into automation.",
+        "enabled": true,
+        "contentType": "table",
+        "tableColumns": ["Step", "Actor", "Action", "Outcome"]
+      },
+      {
+        "id": "discovery-data",
+        "title": "Data",
+        "description": "Capture important data concepts, sources, ownership, and likely Salesforce homes.",
+        "enabled": true,
+        "contentType": "table",
+        "tableColumns": ["Data element", "Salesforce location", "Source or owner", "Notes"]
+      },
+      {
+        "id": "discovery-requirements",
+        "title": "Requirements",
+        "description": "Record build-ready needs that can later connect to formal requirements and user stories.",
+        "enabled": true,
+        "contentType": "table",
+        "tableColumns": ["ID", "Requirement or user story", "Acceptance criteria", "Status"]
+      },
+      {
+        "id": "discovery-security",
+        "title": "Security",
+        "description": "Document who needs access, what they can see or change, and any sensitive-data concerns.",
+        "enabled": true,
+        "contentType": "table",
+        "tableColumns": ["Persona or access group", "Object or data", "Access needed", "Notes"]
+      },
+      {
+        "id": "discovery-risks",
+        "title": "Risks & Dependencies",
+        "description": "Track risks, assumptions, dependencies, owners, and the plan for addressing them.",
+        "enabled": true,
+        "contentType": "table",
+        "tableColumns": ["Risk or dependency", "Impact", "Mitigation", "Owner"]
+      },
+      {
+        "id": "discovery-questions",
+        "title": "Questions",
+        "description": "Keep unresolved questions visible and preserve the accepted answer and decision date.",
+        "enabled": true,
+        "contentType": "table",
+        "tableColumns": ["Question", "Answer", "Date answer accepted"]
+      },
+      {
+        "id": "discovery-out-of-scope",
+        "title": "Out of Scope",
+        "description": "Make boundaries explicit and note whether excluded items should be reconsidered later.",
+        "enabled": true,
+        "contentType": "table",
+        "tableColumns": ["Item", "Reason", "Revisit later?"]
       }
     ]
   },

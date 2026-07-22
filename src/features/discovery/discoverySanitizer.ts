@@ -19,6 +19,7 @@ const allowedTags = new Set([
   'THEAD',
   'TR',
   'UL',
+  'U',
 ])
 
 const removeWithContent = new Set(['IFRAME', 'OBJECT', 'SCRIPT', 'STYLE', 'TEMPLATE'])

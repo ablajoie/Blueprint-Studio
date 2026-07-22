@@ -2,6 +2,7 @@
 
 ```text
 Project
+  -> Discovery Section Template
   -> Solution
       -> Solution Version
           -> Discovery Document
@@ -34,3 +35,4 @@ Project
 - Health results are calculated and are not authoritative stored design data.
 - Unknown extension data is preserved where possible.
 - Naming strategy is a project setting: Salesforce-first, business-first, or hybrid.
+- Discovery section order, visibility, titles, descriptions, and starter format are project settings; section content belongs to each Solution Version.

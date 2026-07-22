@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createBlueprint } from '../domain/blueprintFactory'
+import { createDefaultDiscoverySections } from '../domain/discoveryTemplate'
 import { projectRepository, workspacePreferenceRepository } from '../persistence/database'
 import { useWorkspaceStore } from './workspaceStore'
 
@@ -185,17 +186,47 @@ describe('workspaceStore persistence', () => {
       description: '',
     })
 
-    await useWorkspaceStore
-      .getState()
-      .updateDiscovery('<h2>Problem</h2><p>Capture the current process.</p>')
+    await useWorkspaceStore.getState().updateDiscovery({
+      'discovery-overview': '<h2>Problem</h2><p>Capture the current process.</p>',
+    })
 
     expect(
       useWorkspaceStore.getState().blueprint?.solutions[0]?.versions[0]?.discovery,
     ).toMatchObject({
-      format: 'html',
-      content: '<h2>Problem</h2><p>Capture the current process.</p>',
+      format: 'json-rich-text',
+      content: {
+        version: 1,
+        sections: {
+          'discovery-overview': '<h2>Problem</h2><p>Capture the current process.</p>',
+        },
+      },
     })
     expect(projectRepository.save).toHaveBeenCalledTimes(3)
+  })
+
+  it('persists the project Discovery section template', async () => {
+    vi.mocked(projectRepository.save).mockResolvedValue()
+    await useWorkspaceStore.getState().createProject({
+      name: 'Discovery Standards',
+      description: '',
+      clouds: [],
+    })
+    const sections = createDefaultDiscoverySections()
+    const questions = sections.find((section) => section.id === 'discovery-questions')
+    expect(questions).toBeDefined()
+    if (!questions) return
+    questions.enabled = false
+
+    await useWorkspaceStore.getState().updateDiscoverySections(sections)
+
+    expect(
+      useWorkspaceStore
+        .getState()
+        .blueprint?.settings.discoverySections?.find(
+          (section) => section.id === 'discovery-questions',
+        ),
+    ).toMatchObject({ enabled: false })
+    expect(projectRepository.save).toHaveBeenCalledTimes(2)
   })
 
   it('persists field edits, duplication, and deletion', async () => {

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { BlueprintFile } from '../domain/blueprint'
+import type { BlueprintFile, DiscoverySectionDefinition } from '../domain/blueprint'
 import {
   addGlobalValueSet,
   addRelationship,
@@ -12,6 +12,7 @@ import {
 } from '../domain/connectedMetadata'
 import type { ProjectSummary } from '../domain/projectSummary'
 import { updateDiscoveryDocument } from '../domain/discovery'
+import { updateDiscoverySectionSettings } from '../domain/discoveryTemplate'
 import {
   addField,
   addObject,
@@ -54,6 +55,7 @@ interface WorkspaceState {
   openProject: (projectId: string) => Promise<void>
   createProject: (input: NewProjectInput) => Promise<void>
   updateProject: (input: NewProjectInput) => Promise<void>
+  updateDiscoverySections: (sections: DiscoverySectionDefinition[]) => Promise<void>
   updateStoredProject: (projectId: string, input: NewProjectInput) => Promise<void>
   deleteProject: (projectId?: string) => Promise<void>
   createSolution: (input: NewSolutionInput) => Promise<void>
@@ -74,7 +76,7 @@ interface WorkspaceState {
   createGlobalValueSet: (input: NewGlobalValueSetInput) => Promise<void>
   updateGlobalValueSet: (globalValueSetId: string, input: NewGlobalValueSetInput) => Promise<void>
   deleteGlobalValueSet: (globalValueSetId: string) => Promise<void>
-  updateDiscovery: (content: string) => Promise<void>
+  updateDiscovery: (content: string | Record<string, string>) => Promise<void>
   openView: (view: WorkspaceView) => void
   selectSolution: (id: string) => void
   openObject: (id: string) => void
@@ -185,6 +187,23 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       set({
         status: 'error',
         errorMessage: error instanceof Error ? error.message : 'Your project could not be updated.',
+      })
+    }
+  },
+  updateDiscoverySections: async (sections) => {
+    const state = useWorkspaceStore.getState()
+    if (!state.blueprint) return
+    set({ status: 'saving', errorMessage: null })
+    try {
+      const blueprint = updateDiscoverySectionSettings(state.blueprint, sections)
+      await projectRepository.save(blueprint)
+      const projects = await projectRepository.list()
+      set({ blueprint, projects, status: 'ready' })
+    } catch (error) {
+      set({
+        status: 'error',
+        errorMessage:
+          error instanceof Error ? error.message : 'Discovery section settings could not be saved.',
       })
     }
   },

@@ -1,5 +1,5 @@
-import type { BlueprintFile } from './blueprint'
-import { APPLICATION_VERSION, SCHEMA_VERSION } from './blueprintFactory'
+import type { BlueprintFile, DiscoverySectionDocumentContent } from './blueprint'
+import { APPLICATION_VERSION, SCHEMA_VERSION } from './version'
 
 export const MAX_DISCOVERY_CONTENT_LENGTH = 8_000_000
 
@@ -10,10 +10,11 @@ interface DiscoveryUpdateOptions {
 export function updateDiscoveryDocument(
   blueprint: BlueprintFile,
   solutionId: string,
-  content: string,
+  content: string | Record<string, string>,
   options: DiscoveryUpdateOptions = {},
 ): BlueprintFile {
-  if (content.length > MAX_DISCOVERY_CONTENT_LENGTH) {
+  const contentSize = typeof content === 'string' ? content.length : JSON.stringify(content).length
+  if (contentSize > MAX_DISCOVERY_CONTENT_LENGTH) {
     throw new Error('Discovery notes are too large. Remove one or more images and try again.')
   }
 
@@ -34,11 +35,7 @@ export function updateDiscoveryDocument(
         version.id === currentVersion.id
           ? {
               ...version,
-              discovery: {
-                ...version.discovery,
-                format: 'html' as const,
-                content,
-              },
+              discovery: createUpdatedDocument(version.discovery.assetIds, content),
               updatedAt: timestamp,
             }
           : version,
@@ -54,4 +51,10 @@ export function updateDiscoveryDocument(
     solutions,
     audit: { ...blueprint.audit, updatedAt: timestamp },
   }
+}
+
+function createUpdatedDocument(assetIds: string[], content: string | Record<string, string>) {
+  if (typeof content === 'string') return { format: 'html' as const, content, assetIds }
+  const structuredContent: DiscoverySectionDocumentContent = { version: 1, sections: content }
+  return { format: 'json-rich-text' as const, content: structuredContent, assetIds }
 }

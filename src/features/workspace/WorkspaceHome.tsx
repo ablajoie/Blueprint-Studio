@@ -12,9 +12,9 @@ import { CreateSolutionDialog, SolutionDialog } from '../solutions/CreateSolutio
 
 type OpenDialog =
   | {
-      kind:
-        'project-create' | 'project-edit' | 'project-delete' | 'solution-create' | 'object-create'
+      kind: 'project-create' | 'project-delete' | 'solution-create' | 'object-create'
     }
+  | { kind: 'project-edit'; initialTab?: 'details' | 'discovery' }
   | { kind: 'solution-edit' | 'solution-delete'; solutionId: string }
   | null
 
@@ -71,6 +71,10 @@ export function WorkspaceHome() {
         <DiscoveryWorkspace
           key={`${selectedSolution.id}:${selectedSolution.versions.at(-1)?.id ?? 'empty'}`}
           solution={selectedSolution}
+          settings={blueprint.settings}
+          onConfigureSections={() => {
+            setDialog({ kind: 'project-edit', initialTab: 'discovery' })
+          }}
         />
       ) : activeView === 'start' && selectedSolution ? (
         <SolutionStart
@@ -125,6 +129,7 @@ export function WorkspaceHome() {
       {dialog?.kind === 'project-edit' && blueprint ? (
         <ProjectDialog
           project={blueprint.project}
+          initialTab={dialog.initialTab ?? 'details'}
           onClose={() => {
             setDialog(null)
           }}

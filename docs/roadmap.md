@@ -4,7 +4,7 @@
 
 - Project and solution creation
 - Solution versions
-- Discovery document — implemented
+- Sectioned Discovery document and project template — implemented
 - Objects and fields
 - Relationships — implemented
 - Table and schema data-model views — implemented
@@ -46,6 +46,7 @@ Initial Salesforce import scope:
 - Org-to-org comparison
 - AI-assisted descriptions and design review
 - AI-assisted discovery extraction and promotion to design
+- Lightweight workflow diagram blocks
 - OneDrive/SharePoint storage
 - Team review and collaboration
 - Data Cloud modeling

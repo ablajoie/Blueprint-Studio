@@ -5,9 +5,10 @@ interface ModalProps {
   description: string
   children: ReactNode
   onClose: () => void
+  width?: 'default' | 'wide'
 }
 
-export function Modal({ title, description, children, onClose }: ModalProps) {
+export function Modal({ title, description, children, onClose, width = 'default' }: ModalProps) {
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose()
@@ -24,7 +25,9 @@ export function Modal({ title, description, children, onClose }: ModalProps) {
       role="presentation"
     >
       <section
-        className="w-full max-w-xl overflow-hidden rounded-xl bg-white shadow-2xl"
+        className={`w-full overflow-hidden rounded-xl bg-white shadow-2xl ${
+          width === 'wide' ? 'max-w-3xl' : 'max-w-xl'
+        }`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="dialog-title"

@@ -11,9 +11,10 @@ import type {
   SolutionVersion,
   UUID,
 } from './blueprint'
+import { createDefaultDiscoverySections, createDiscoveryDocument } from './discoveryTemplate'
+import { APPLICATION_VERSION, SCHEMA_VERSION } from './version'
 
-export const APPLICATION_VERSION = '0.1.0'
-export const SCHEMA_VERSION = '0.2.0'
+export { APPLICATION_VERSION, SCHEMA_VERSION } from './version'
 
 export interface NewProjectInput {
   name: string
@@ -95,6 +96,7 @@ export function createBlueprint(
       namingStrategy: 'hybrid',
       autoGenerateApiNames: true,
       healthRules: [],
+      discoverySections: createDefaultDiscoverySections(),
     },
     templates: [],
     audit: {
@@ -118,7 +120,7 @@ export function addSolution(
     solutionId,
     number: '0.1',
     status: 'discovery',
-    discovery: { format: 'html', content: '', assetIds: [] },
+    discovery: createDiscoveryDocument(blueprint.settings),
     requirements: [],
     metadata: {
       objects: [],

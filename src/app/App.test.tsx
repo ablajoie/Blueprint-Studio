@@ -202,6 +202,6 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /Start with Discovery Notes/ }))
 
     expect(screen.getByRole('heading', { name: 'Discovery' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Discovery notes editor')).toBeInTheDocument()
+    expect(screen.getByLabelText('Overview discovery section')).toBeInTheDocument()
   })
 })
