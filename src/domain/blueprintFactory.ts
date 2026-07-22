@@ -3,6 +3,7 @@ import type {
   FieldDataType,
   ObjectKind,
   ObjectRelationship,
+  PicklistDependencyMapping,
   PicklistValue,
   SalesforceField,
   SalesforceObject,
@@ -12,7 +13,7 @@ import type {
 } from './blueprint'
 
 export const APPLICATION_VERSION = '0.1.0'
-export const SCHEMA_VERSION = '0.1.0'
+export const SCHEMA_VERSION = '0.2.0'
 
 export interface NewProjectInput {
   name: string
@@ -48,6 +49,11 @@ export interface NewFieldInput {
   formula: string
   referenceToObjectId: string
   picklistValues: string[]
+  globalValueSetId?: string
+  controllingFieldId?: string
+  dependencyMappings?: PicklistDependencyMapping[]
+  relationshipName?: string
+  relationshipDescription?: string
 }
 
 interface FactoryOptions {
@@ -246,7 +252,13 @@ export function addField(
     ...optionalNumber('scale', input.scale),
     ...optionalText('formula', input.formula),
     ...(isRelationship(input.dataType) ? { referenceToObjectId: input.referenceToObjectId } : {}),
-    ...(isPicklist(input.dataType) ? { localPicklistValues: picklistValues } : {}),
+    ...(isPicklist(input.dataType) && input.globalValueSetId
+      ? { globalValueSetId: input.globalValueSetId }
+      : {}),
+    ...(isPicklist(input.dataType) && !input.globalValueSetId
+      ? { localPicklistValues: picklistValues }
+      : {}),
+    ...picklistDependency(input),
     governance: { tags: [] },
   }
   const relationship: ObjectRelationship | null = isRelationship(input.dataType)
@@ -256,6 +268,8 @@ export function addField(
         parentObjectId: input.referenceToObjectId,
         childObjectId: input.objectId,
         type: input.dataType,
+        ...optionalText('relationshipName', input.relationshipName ?? ''),
+        ...optionalText('description', input.relationshipDescription ?? ''),
       }
     : null
 
@@ -322,7 +336,11 @@ export function updateField(
     createId,
     existingField.localPicklistValues,
   )
+  if (completeInput.controllingFieldId === fieldId) {
+    throw new Error('A dependent picklist cannot control itself')
+  }
   validateFieldDefinition(version, completeInput, picklistValues)
+  validateControllerChange(version, fieldId, completeInput, picklistValues)
 
   const updatedField: SalesforceField = {
     id: existingField.id,
@@ -344,7 +362,13 @@ export function updateField(
     ...(isRelationship(completeInput.dataType)
       ? { referenceToObjectId: completeInput.referenceToObjectId }
       : {}),
-    ...(isPicklist(completeInput.dataType) ? { localPicklistValues: picklistValues } : {}),
+    ...(isPicklist(completeInput.dataType) && completeInput.globalValueSetId
+      ? { globalValueSetId: completeInput.globalValueSetId }
+      : {}),
+    ...(isPicklist(completeInput.dataType) && !completeInput.globalValueSetId
+      ? { localPicklistValues: picklistValues }
+      : {}),
+    ...picklistDependency(completeInput),
     governance: existingField.governance,
   }
   const existingRelationship = version.metadata.relationships.find(
@@ -357,12 +381,14 @@ export function updateField(
         parentObjectId: completeInput.referenceToObjectId,
         childObjectId: existingField.objectId,
         type: completeInput.dataType,
-        ...(existingRelationship?.relationshipName
-          ? { relationshipName: existingRelationship.relationshipName }
-          : {}),
-        ...(existingRelationship?.description
-          ? { description: existingRelationship.description }
-          : {}),
+        ...optionalText(
+          'relationshipName',
+          completeInput.relationshipName ?? existingRelationship?.relationshipName ?? '',
+        ),
+        ...optionalText(
+          'description',
+          completeInput.relationshipDescription ?? existingRelationship?.description ?? '',
+        ),
       }
     : null
 
@@ -439,6 +465,13 @@ export function duplicateField(
       formula: field.formula ?? '',
       referenceToObjectId: field.referenceToObjectId ?? '',
       picklistValues: field.localPicklistValues?.map((value) => value.label) ?? [],
+      ...(field.globalValueSetId ? { globalValueSetId: field.globalValueSetId } : {}),
+      ...(field.picklistDependency
+        ? {
+            controllingFieldId: field.picklistDependency.controllingFieldId,
+            dependencyMappings: field.picklistDependency.mappings,
+          }
+        : {}),
     },
     options,
   )
@@ -481,6 +514,11 @@ export function getFieldDeleteDependencies(
   for (const decision of version.decisions) {
     if (decision.linkedArtifactIds.includes(fieldId)) {
       dependencies.push(`Decision: ${decision.title}`)
+    }
+  }
+  for (const dependentField of version.metadata.fields) {
+    if (dependentField.picklistDependency?.controllingFieldId === fieldId) {
+      dependencies.push(`Dependent field: ${dependentField.label}`)
     }
   }
   return [...new Set(dependencies)]
@@ -552,8 +590,15 @@ function isPicklist(dataType: FieldDataType) {
   return dataType === 'picklist' || dataType === 'multi-select-picklist'
 }
 
-function isRelationship(dataType: FieldDataType): dataType is 'lookup' | 'master-detail' {
-  return dataType === 'lookup' || dataType === 'master-detail'
+function isRelationship(
+  dataType: FieldDataType,
+): dataType is 'lookup' | 'master-detail' | 'external-lookup' | 'indirect-lookup' {
+  return (
+    dataType === 'lookup' ||
+    dataType === 'master-detail' ||
+    dataType === 'external-lookup' ||
+    dataType === 'indirect-lookup'
+  )
 }
 
 function createPicklistValues(
@@ -583,8 +628,15 @@ function validateFieldDefinition(
   input: NewFieldInput,
   picklistValues: PicklistValue[],
 ) {
-  if (isPicklist(input.dataType) && picklistValues.length === 0) {
+  if (isPicklist(input.dataType) && !input.globalValueSetId && picklistValues.length === 0) {
     throw new Error('Picklist fields require at least one value')
+  }
+  if (
+    isPicklist(input.dataType) &&
+    input.globalValueSetId &&
+    !version.metadata.globalValueSets.some((valueSet) => valueSet.id === input.globalValueSetId)
+  ) {
+    throw new Error('The selected global value set could not be found')
   }
   if (isRelationship(input.dataType) && !input.referenceToObjectId) {
     throw new Error('Relationship fields require a related object')
@@ -595,10 +647,125 @@ function validateFieldDefinition(
   ) {
     throw new Error('The related object could not be found')
   }
+  if (input.dataType === 'master-detail' && input.objectId === input.referenceToObjectId) {
+    throw new Error('Master-detail relationships cannot reference the same object')
+  }
   if (input.dataType === 'formula' && !compactText(input.formula)) {
     throw new Error('Formula fields require a formula expression')
   }
+  validatePicklistDependency(version, input, picklistValues)
   validateFieldNumbers(input)
+}
+
+function picklistDependency(input: NewFieldInput) {
+  if (!isPicklist(input.dataType) || !input.controllingFieldId) return {}
+  return {
+    picklistDependency: {
+      controllingFieldId: input.controllingFieldId,
+      mappings: (input.dependencyMappings ?? []).map((mapping) => ({
+        controllingValue: compactText(mapping.controllingValue),
+        dependentValues: [...new Set(mapping.dependentValues.map(compactText).filter(Boolean))],
+      })),
+    },
+  }
+}
+
+function validatePicklistDependency(
+  version: SolutionVersion,
+  input: NewFieldInput,
+  localValues: PicklistValue[],
+) {
+  if (!input.controllingFieldId) return
+  if (!isPicklist(input.dataType)) {
+    throw new Error('Only picklist fields can be dependent fields')
+  }
+  const controllingField = version.metadata.fields.find(
+    (field) => field.id === input.controllingFieldId,
+  )
+  if (!controllingField || controllingField.objectId !== input.objectId) {
+    throw new Error('The controlling field must exist on the same object')
+  }
+  if (controllingField.dataType !== 'checkbox' && controllingField.dataType !== 'picklist') {
+    throw new Error('Controlling fields must be a checkbox or picklist')
+  }
+  const mappings = input.dependencyMappings ?? []
+  if (!mappings.some((mapping) => mapping.dependentValues.length)) {
+    throw new Error('Dependent picklists require at least one value mapping')
+  }
+  const dependentValues = new Set(
+    (input.globalValueSetId
+      ? (version.metadata.globalValueSets.find((set) => set.id === input.globalValueSetId)
+          ?.values ?? [])
+      : localValues
+    ).map((value) => value.apiValue.toLowerCase()),
+  )
+  if (
+    mappings.some((mapping) =>
+      mapping.dependentValues.some((value) => !dependentValues.has(value.toLowerCase())),
+    )
+  ) {
+    throw new Error('A dependent mapping references a value that is not available')
+  }
+  const controllingValues = new Set(
+    getPersistedFieldValues(version, controllingField).map((value) => value.toLowerCase()),
+  )
+  if (
+    mappings.some(
+      (mapping) =>
+        compactText(mapping.controllingValue) &&
+        !controllingValues.has(compactText(mapping.controllingValue).toLowerCase()),
+    )
+  ) {
+    throw new Error('A dependency mapping references an unavailable controlling value')
+  }
+}
+
+function validateControllerChange(
+  version: SolutionVersion,
+  fieldId: UUID,
+  input: NewFieldInput,
+  localValues: PicklistValue[],
+) {
+  const dependents = version.metadata.fields.filter(
+    (field) => field.picklistDependency?.controllingFieldId === fieldId,
+  )
+  if (!dependents.length) return
+  if (input.dataType !== 'checkbox' && input.dataType !== 'picklist') {
+    throw new Error('Change dependent fields before changing this controlling field type')
+  }
+  const availableValues = new Set(
+    (input.dataType === 'checkbox'
+      ? ['true', 'false']
+      : input.globalValueSetId
+        ? (version.metadata.globalValueSets
+            .find((valueSet) => valueSet.id === input.globalValueSetId)
+            ?.values.map((value) => value.apiValue) ?? [])
+        : localValues.map((value) => value.apiValue)
+    ).map((value) => value.toLowerCase()),
+  )
+  const hasRemovedMapping = dependents.some((dependent) =>
+    dependent.picklistDependency?.mappings.some(
+      (mapping) => !availableValues.has(mapping.controllingValue.toLowerCase()),
+    ),
+  )
+  if (hasRemovedMapping) {
+    throw new Error('Update dependent value mappings before removing controlling values')
+  }
+}
+
+function getPersistedFieldValues(version: SolutionVersion, field: SalesforceField) {
+  if (field.dataType === 'checkbox') return ['true', 'false']
+  if (field.globalValueSetId) {
+    return (
+      version.metadata.globalValueSets
+        .find((valueSet) => valueSet.id === field.globalValueSetId)
+        ?.values.filter((value) => value.active)
+        .map((value) => value.apiValue) ?? []
+    )
+  }
+  return (
+    field.localPicklistValues?.filter((value) => value.active).map((value) => value.apiValue) ?? []
+  )
 }
 
 function optionalNumber(key: string, value: number | undefined) {
@@ -641,6 +808,8 @@ function optionalDefaultValue(value: string, dataType: FieldDataType) {
 function touchBlueprint(blueprint: BlueprintFile, timestamp: string): BlueprintFile {
   return {
     ...blueprint,
+    schemaVersion: SCHEMA_VERSION,
+    applicationVersion: APPLICATION_VERSION,
     project: { ...blueprint.project, updatedAt: timestamp },
     audit: { ...blueprint.audit, updatedAt: timestamp },
   }

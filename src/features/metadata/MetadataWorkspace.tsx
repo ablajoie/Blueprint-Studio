@@ -7,6 +7,12 @@ import { useWorkspaceStore } from '../../store/workspaceStore'
 import { ObjectDialog } from './CreateObjectDialog'
 import { CreateFieldDialog, FieldDialog } from './CreateFieldDialog'
 import { DeleteFieldDialog } from './DeleteFieldDialog'
+import {
+  GlobalValueSetsWorkspace,
+  MetadataChecks,
+  MetadataTabs,
+  RelationshipsWorkspace,
+} from './ConnectedMetadataWorkspaces'
 
 export function MetadataWorkspace({
   solution,
@@ -17,6 +23,7 @@ export function MetadataWorkspace({
 }) {
   const selectedObjectId = useWorkspaceStore((state) => state.selectedObjectId)
   const selectedArtifactId = useWorkspaceStore((state) => state.selectedArtifactId)
+  const metadataSection = useWorkspaceStore((state) => state.metadataSection)
   const blueprint = useWorkspaceStore((state) => state.blueprint)
   const openObject = useWorkspaceStore((state) => state.openObject)
   const showObjectList = useWorkspaceStore((state) => state.showObjectList)
@@ -35,9 +42,18 @@ export function MetadataWorkspace({
   const version = solution.versions.at(-1)
   const objects = version?.metadata.objects ?? []
   const fields = version?.metadata.fields ?? []
+  const globalValueSets = version?.metadata.globalValueSets ?? []
   const selectedObject = objects.find((object) => object.id === selectedObjectId)
   const editingField = fields.find((field) => field.id === editingFieldId)
   const deletingField = fields.find((field) => field.id === deletingFieldId)
+
+  if (metadataSection === 'relationships') {
+    return <RelationshipsWorkspace solution={solution} />
+  }
+
+  if (metadataSection === 'global-value-sets') {
+    return <GlobalValueSetsWorkspace solution={solution} />
+  }
 
   if (selectedObject) {
     return (
@@ -80,6 +96,8 @@ export function MetadataWorkspace({
           <CreateFieldDialog
             object={selectedObject}
             availableObjects={objects}
+            availableFields={fields}
+            globalValueSets={globalValueSets}
             onClose={() => {
               setCreatingField(false)
             }}
@@ -115,6 +133,8 @@ export function MetadataWorkspace({
           <FieldDialog
             object={selectedObject}
             availableObjects={objects}
+            availableFields={fields}
+            globalValueSets={globalValueSets}
             field={editingField}
             onClose={() => {
               setEditingFieldId(null)
@@ -153,6 +173,9 @@ export function MetadataWorkspace({
           New Object
         </button>
       </div>
+
+      <MetadataTabs active="objects" />
+      {version ? <MetadataChecks version={version} /> : null}
 
       <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
@@ -215,6 +238,7 @@ function ObjectWorkspace({
   onSelectField: (id: string) => void
 }) {
   const selectedField = fields.find((field) => field.id === selectedArtifactId)
+  const showRelationships = useWorkspaceStore((state) => state.showRelationships)
 
   return (
     <section className="mx-auto max-w-6xl p-8">
@@ -249,7 +273,12 @@ function ObjectWorkspace({
 
       <div className="mt-7 flex gap-6 border-b border-slate-200 text-sm font-semibold">
         <span className="border-b-2 border-blue-700 px-1 pb-3 text-blue-800">Fields</span>
-        <span className="px-1 pb-3 text-slate-400">Relationships</span>
+        <button
+          className="px-1 pb-3 text-slate-500 hover:text-slate-800"
+          onClick={showRelationships}
+        >
+          Relationships
+        </button>
         <span className="px-1 pb-3 text-slate-400">Layouts</span>
         <span className="px-1 pb-3 text-slate-400">Security</span>
       </div>

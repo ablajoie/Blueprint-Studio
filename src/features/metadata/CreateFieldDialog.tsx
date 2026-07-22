@@ -1,9 +1,17 @@
 import { useState, type SyntheticEvent } from 'react'
 import { DialogActions, Field, Select, TextArea, TextInput } from '../../components/ui/FormControls'
 import { Modal } from '../../components/ui/Modal'
-import type { FieldDataType, SalesforceField, SalesforceObject } from '../../domain/blueprint'
+import type {
+  FieldDataType,
+  GlobalValueSet,
+  PicklistDependencyMapping,
+  SalesforceField,
+  SalesforceObject,
+} from '../../domain/blueprint'
 import { generateFieldApiName } from '../../domain/blueprintFactory'
 import { useWorkspaceStore } from '../../store/workspaceStore'
+import { PicklistConfiguration } from './PicklistConfiguration'
+import { getControllingFields, getFieldValues, parseValueLines } from './picklistConfigurationModel'
 
 const fieldTypeGroups: { label: string; options: { value: FieldDataType; label: string }[] }[] = [
   {
@@ -48,6 +56,8 @@ const fieldTypeGroups: { label: string; options: { value: FieldDataType; label: 
     options: [
       { value: 'lookup', label: 'Lookup Relationship' },
       { value: 'master-detail', label: 'Master-Detail Relationship' },
+      { value: 'external-lookup', label: 'External Lookup Relationship' },
+      { value: 'indirect-lookup', label: 'Indirect Lookup Relationship' },
     ],
   },
   {
@@ -70,16 +80,25 @@ const lengthTypes: FieldDataType[] = [
 ]
 const numericTypes: FieldDataType[] = ['number', 'currency', 'percent', 'geolocation']
 const picklistTypes: FieldDataType[] = ['picklist', 'multi-select-picklist']
-const relationshipTypes: FieldDataType[] = ['lookup', 'master-detail']
+const relationshipTypes: FieldDataType[] = [
+  'lookup',
+  'master-detail',
+  'external-lookup',
+  'indirect-lookup',
+]
 
 export function FieldDialog({
   object,
   availableObjects,
+  availableFields = [],
+  globalValueSets = [],
   field,
   onClose,
 }: {
   object: SalesforceObject
   availableObjects: SalesforceObject[]
+  availableFields?: SalesforceField[]
+  globalValueSets?: GlobalValueSet[]
   field?: SalesforceField
   onClose: () => void
 }) {
@@ -88,6 +107,12 @@ export function FieldDialog({
   const status = useWorkspaceStore((state) => state.status)
   const errorMessage = useWorkspaceStore((state) => state.errorMessage)
   const clearError = useWorkspaceStore((state) => state.clearError)
+  const blueprint = useWorkspaceStore((state) => state.blueprint)
+  const selectedSolutionId = useWorkspaceStore((state) => state.selectedSolutionId)
+  const relationship = blueprint?.solutions
+    .find((solution) => solution.id === selectedSolutionId)
+    ?.versions.at(-1)
+    ?.metadata.relationships.find((item) => item.fieldId === field?.id)
   const [label, setLabel] = useState(field?.label ?? '')
   const [apiName, setApiName] = useState(field?.apiName ?? '')
   const [dataType, setDataType] = useState<FieldDataType>(field?.dataType ?? 'text')
@@ -105,14 +130,48 @@ export function FieldDialog({
   const [picklistValues, setPicklistValues] = useState(
     field?.localPicklistValues?.map((value) => value.label).join('\n') ?? '',
   )
+  const [globalValueSetId, setGlobalValueSetId] = useState(field?.globalValueSetId ?? '')
+  const [controllingFieldId, setControllingFieldId] = useState(
+    field?.picklistDependency?.controllingFieldId ?? '',
+  )
+  const [dependencySelections, setDependencySelections] = useState<Record<string, string[]>>(
+    Object.fromEntries(
+      field?.picklistDependency?.mappings.map((mapping) => [
+        mapping.controllingValue,
+        mapping.dependentValues,
+      ]) ?? [],
+    ),
+  )
   const [referenceToObjectId, setReferenceToObjectId] = useState(field?.referenceToObjectId ?? '')
   const [formula, setFormula] = useState(field?.formula ?? '')
+  const [relationshipName, setRelationshipName] = useState(relationship?.relationshipName ?? '')
+  const [relationshipDescription, setRelationshipDescription] = useState(
+    relationship?.description ?? '',
+  )
   const saving = status === 'saving'
   const suggestedApiName = label.trim() ? generateFieldApiName(label) : ''
   const relationshipObjects =
     dataType === 'master-detail'
       ? availableObjects.filter((candidate) => candidate.id !== object.id)
       : availableObjects
+  const controllingFields = getControllingFields(availableFields, object.id, field?.id)
+  const controllingField = controllingFields.find(
+    (candidate) => candidate.id === controllingFieldId,
+  )
+  const controllingValues = controllingField
+    ? getFieldValues(controllingField, globalValueSets)
+    : []
+  const dependentValues = globalValueSetId
+    ? (globalValueSets
+        .find((set) => set.id === globalValueSetId)
+        ?.values.map((value) => value.apiValue) ?? [])
+    : parseValueLines(picklistValues)
+  const dependencyMappings: PicklistDependencyMapping[] = controllingValues.map((value) => ({
+    controllingValue: value,
+    dependentValues: (dependencySelections[value] ?? []).filter((candidate) =>
+      dependentValues.includes(candidate),
+    ),
+  }))
 
   const submit = async (event: SyntheticEvent<HTMLFormElement, SubmitEvent>) => {
     event.preventDefault()
@@ -133,6 +192,11 @@ export function FieldDialog({
       formula,
       referenceToObjectId,
       picklistValues: picklistValues.split(/\r?\n/),
+      globalValueSetId: isPicklist(dataType) ? globalValueSetId : '',
+      controllingFieldId: isPicklist(dataType) ? controllingFieldId : '',
+      dependencyMappings,
+      relationshipName,
+      relationshipDescription,
     }
     if (field) await updateField(field.id, fieldInput)
     else await createField(fieldInput)
@@ -253,36 +317,59 @@ export function FieldDialog({
           ) : null}
 
           {picklistTypes.includes(dataType) ? (
-            <Field label="Picklist values" hint="One value per line">
-              <TextArea
-                rows={5}
-                required
-                value={picklistValues}
-                onChange={(event) => {
-                  setPicklistValues(event.target.value)
-                }}
-                placeholder={'Draft\nSubmitted\nApproved'}
-              />
-            </Field>
+            <PicklistConfiguration
+              globalValueSets={globalValueSets}
+              controllingFields={controllingFields}
+              globalValueSetId={globalValueSetId}
+              onGlobalValueSetChange={setGlobalValueSetId}
+              picklistValues={picklistValues}
+              onPicklistValuesChange={setPicklistValues}
+              controllingFieldId={controllingFieldId}
+              onControllingFieldChange={setControllingFieldId}
+              dependencySelections={dependencySelections}
+              onDependencySelectionsChange={setDependencySelections}
+            />
           ) : null}
 
           {relationshipTypes.includes(dataType) ? (
-            <Field label="Related object">
-              <Select
-                required
-                value={referenceToObjectId}
-                onChange={(event) => {
-                  setReferenceToObjectId(event.target.value)
-                }}
-              >
-                <option value="">Select an object</option>
-                {relationshipObjects.map((candidate) => (
-                  <option key={candidate.id} value={candidate.id}>
-                    {candidate.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            <div className="space-y-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <Field label="Related object">
+                <Select
+                  required
+                  value={referenceToObjectId}
+                  onChange={(event) => {
+                    setReferenceToObjectId(event.target.value)
+                  }}
+                >
+                  <option value="">Select an object</option>
+                  {relationshipObjects.map((candidate) => (
+                    <option key={candidate.id} value={candidate.id}>
+                      {candidate.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Child relationship name" hint="Optional">
+                <TextInput
+                  maxLength={80}
+                  value={relationshipName}
+                  onChange={(event) => {
+                    setRelationshipName(event.target.value)
+                  }}
+                  placeholder={label.trim().replace(/[^a-zA-Z0-9]+/g, '_') || 'Borrower'}
+                />
+              </Field>
+              <Field label="Relationship description" hint="Optional">
+                <TextArea
+                  rows={2}
+                  maxLength={500}
+                  value={relationshipDescription}
+                  onChange={(event) => {
+                    setRelationshipDescription(event.target.value)
+                  }}
+                />
+              </Field>
+            </div>
           ) : null}
 
           {dataType === 'formula' ? (
@@ -351,7 +438,14 @@ export function FieldDialog({
                   <option value="true">Checked</option>
                 </Select>
               </Field>
-            ) : !['formula', 'auto-number', 'lookup', 'master-detail'].includes(dataType) ? (
+            ) : ![
+                'formula',
+                'auto-number',
+                'lookup',
+                'master-detail',
+                'external-lookup',
+                'indirect-lookup',
+              ].includes(dataType) ? (
               <Field label="Default value" hint="Optional">
                 <TextInput
                   value={defaultValue}
@@ -379,7 +473,13 @@ export function FieldDialog({
 export function CreateFieldDialog(props: {
   object: SalesforceObject
   availableObjects: SalesforceObject[]
+  availableFields?: SalesforceField[]
+  globalValueSets?: GlobalValueSet[]
   onClose: () => void
 }) {
   return <FieldDialog {...props} />
+}
+
+function isPicklist(dataType: FieldDataType) {
+  return dataType === 'picklist' || dataType === 'multi-select-picklist'
 }

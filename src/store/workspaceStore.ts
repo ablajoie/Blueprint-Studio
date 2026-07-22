@@ -1,5 +1,15 @@
 import { create } from 'zustand'
 import type { BlueprintFile } from '../domain/blueprint'
+import {
+  addGlobalValueSet,
+  addRelationship,
+  deleteGlobalValueSet as deleteGlobalValueSetFromBlueprint,
+  deleteRelationship as deleteRelationshipFromBlueprint,
+  type NewGlobalValueSetInput,
+  type NewRelationshipInput,
+  updateGlobalValueSet as updateGlobalValueSetInBlueprint,
+  updateRelationship as updateRelationshipInBlueprint,
+} from '../domain/connectedMetadata'
 import type { ProjectSummary } from '../domain/projectSummary'
 import {
   addField,
@@ -26,6 +36,7 @@ import {
 import { projectRepository, workspacePreferenceRepository } from '../persistence/database'
 
 export type WorkspaceView = 'projects' | 'overview' | 'start' | 'metadata'
+export type MetadataSection = 'objects' | 'relationships' | 'global-value-sets'
 
 interface WorkspaceState {
   status: 'idle' | 'loading' | 'ready' | 'saving' | 'error'
@@ -35,6 +46,7 @@ interface WorkspaceState {
   selectedObjectId: string | null
   selectedArtifactId: string | null
   activeView: WorkspaceView
+  metadataSection: MetadataSection
   errorMessage: string | null
   hydrate: () => Promise<void>
   refreshProjects: () => Promise<void>
@@ -55,10 +67,18 @@ interface WorkspaceState {
   updateField: (fieldId: string, input: Omit<NewFieldInput, 'objectId'>) => Promise<void>
   duplicateField: (fieldId: string) => Promise<void>
   deleteField: (fieldId: string) => Promise<void>
+  createRelationship: (input: NewRelationshipInput) => Promise<void>
+  updateRelationship: (relationshipId: string, input: NewRelationshipInput) => Promise<void>
+  deleteRelationship: (relationshipId: string) => Promise<void>
+  createGlobalValueSet: (input: NewGlobalValueSetInput) => Promise<void>
+  updateGlobalValueSet: (globalValueSetId: string, input: NewGlobalValueSetInput) => Promise<void>
+  deleteGlobalValueSet: (globalValueSetId: string) => Promise<void>
   openView: (view: WorkspaceView) => void
   selectSolution: (id: string) => void
   openObject: (id: string) => void
   showObjectList: () => void
+  showRelationships: () => void
+  showGlobalValueSets: () => void
   selectArtifact: (id: string | null) => void
   clearError: () => void
 }
@@ -71,6 +91,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   selectedObjectId: null,
   selectedArtifactId: null,
   activeView: 'overview',
+  metadataSection: 'objects',
   errorMessage: null,
   hydrate: async () => {
     set({ status: 'loading', errorMessage: null })
@@ -93,6 +114,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         selectedObjectId: null,
         selectedArtifactId: null,
         activeView: blueprint ? 'overview' : 'projects',
+        metadataSection: 'objects',
         status: 'ready',
       })
     } catch {
@@ -119,6 +141,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         selectedObjectId: null,
         selectedArtifactId: null,
         activeView: 'overview',
+        metadataSection: 'objects',
         status: 'ready',
       })
     } catch {
@@ -139,6 +162,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         selectedObjectId: null,
         selectedArtifactId: null,
         activeView: 'overview',
+        metadataSection: 'objects',
         status: 'ready',
       })
     } catch {
@@ -446,6 +470,134 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       })
     }
   },
+  createRelationship: async (input) => {
+    const state = useWorkspaceStore.getState()
+    if (!state.blueprint || !state.selectedSolutionId) return
+    set({ status: 'saving', errorMessage: null })
+    try {
+      const result = addRelationship(state.blueprint, state.selectedSolutionId, input)
+      await projectRepository.save(result.blueprint)
+      set({
+        blueprint: result.blueprint,
+        selectedObjectId: null,
+        selectedArtifactId: result.relationshipId,
+        metadataSection: 'relationships',
+        activeView: 'metadata',
+        status: 'ready',
+      })
+    } catch (error) {
+      set({
+        status: 'error',
+        errorMessage:
+          error instanceof Error ? error.message : 'Your relationship could not be saved.',
+      })
+    }
+  },
+  updateRelationship: async (relationshipId, input) => {
+    const state = useWorkspaceStore.getState()
+    if (!state.blueprint || !state.selectedSolutionId) return
+    set({ status: 'saving', errorMessage: null })
+    try {
+      const blueprint = updateRelationshipInBlueprint(
+        state.blueprint,
+        state.selectedSolutionId,
+        relationshipId,
+        input,
+      )
+      await projectRepository.save(blueprint)
+      set({ blueprint, selectedArtifactId: relationshipId, status: 'ready' })
+    } catch (error) {
+      set({
+        status: 'error',
+        errorMessage:
+          error instanceof Error ? error.message : 'Your relationship could not be updated.',
+      })
+    }
+  },
+  deleteRelationship: async (relationshipId) => {
+    const state = useWorkspaceStore.getState()
+    if (!state.blueprint || !state.selectedSolutionId) return
+    set({ status: 'saving', errorMessage: null })
+    try {
+      const blueprint = deleteRelationshipFromBlueprint(
+        state.blueprint,
+        state.selectedSolutionId,
+        relationshipId,
+      )
+      await projectRepository.save(blueprint)
+      set({ blueprint, selectedArtifactId: null, status: 'ready' })
+    } catch (error) {
+      set({
+        status: 'error',
+        errorMessage:
+          error instanceof Error ? error.message : 'Your relationship could not be deleted.',
+      })
+    }
+  },
+  createGlobalValueSet: async (input) => {
+    const state = useWorkspaceStore.getState()
+    if (!state.blueprint || !state.selectedSolutionId) return
+    set({ status: 'saving', errorMessage: null })
+    try {
+      const result = addGlobalValueSet(state.blueprint, state.selectedSolutionId, input)
+      await projectRepository.save(result.blueprint)
+      set({
+        blueprint: result.blueprint,
+        selectedObjectId: null,
+        selectedArtifactId: result.globalValueSetId,
+        metadataSection: 'global-value-sets',
+        activeView: 'metadata',
+        status: 'ready',
+      })
+    } catch (error) {
+      set({
+        status: 'error',
+        errorMessage:
+          error instanceof Error ? error.message : 'Your global value set could not be saved.',
+      })
+    }
+  },
+  updateGlobalValueSet: async (globalValueSetId, input) => {
+    const state = useWorkspaceStore.getState()
+    if (!state.blueprint || !state.selectedSolutionId) return
+    set({ status: 'saving', errorMessage: null })
+    try {
+      const blueprint = updateGlobalValueSetInBlueprint(
+        state.blueprint,
+        state.selectedSolutionId,
+        globalValueSetId,
+        input,
+      )
+      await projectRepository.save(blueprint)
+      set({ blueprint, selectedArtifactId: globalValueSetId, status: 'ready' })
+    } catch (error) {
+      set({
+        status: 'error',
+        errorMessage:
+          error instanceof Error ? error.message : 'Your global value set could not be updated.',
+      })
+    }
+  },
+  deleteGlobalValueSet: async (globalValueSetId) => {
+    const state = useWorkspaceStore.getState()
+    if (!state.blueprint || !state.selectedSolutionId) return
+    set({ status: 'saving', errorMessage: null })
+    try {
+      const blueprint = deleteGlobalValueSetFromBlueprint(
+        state.blueprint,
+        state.selectedSolutionId,
+        globalValueSetId,
+      )
+      await projectRepository.save(blueprint)
+      set({ blueprint, selectedArtifactId: null, status: 'ready' })
+    } catch (error) {
+      set({
+        status: 'error',
+        errorMessage:
+          error instanceof Error ? error.message : 'Your global value set could not be deleted.',
+      })
+    }
+  },
   openView: (activeView) => {
     set({ activeView })
   },
@@ -455,13 +607,40 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       selectedObjectId: null,
       selectedArtifactId: null,
       activeView: 'overview',
+      metadataSection: 'objects',
     })
   },
   openObject: (selectedObjectId) => {
-    set({ selectedObjectId, selectedArtifactId: selectedObjectId, activeView: 'metadata' })
+    set({
+      selectedObjectId,
+      selectedArtifactId: selectedObjectId,
+      metadataSection: 'objects',
+      activeView: 'metadata',
+    })
   },
   showObjectList: () => {
-    set({ selectedObjectId: null, selectedArtifactId: null, activeView: 'metadata' })
+    set({
+      selectedObjectId: null,
+      selectedArtifactId: null,
+      metadataSection: 'objects',
+      activeView: 'metadata',
+    })
+  },
+  showRelationships: () => {
+    set({
+      selectedObjectId: null,
+      selectedArtifactId: null,
+      metadataSection: 'relationships',
+      activeView: 'metadata',
+    })
+  },
+  showGlobalValueSets: () => {
+    set({
+      selectedObjectId: null,
+      selectedArtifactId: null,
+      metadataSection: 'global-value-sets',
+      activeView: 'metadata',
+    })
   },
   selectArtifact: (selectedArtifactId) => {
     set({ selectedArtifactId })

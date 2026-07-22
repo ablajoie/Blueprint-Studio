@@ -16,7 +16,13 @@ export function AppShell() {
     const version = solution?.versions.at(-1)
     return Boolean(
       version?.metadata.objects.some((object) => object.id === state.selectedArtifactId) ||
-      version?.metadata.fields.some((field) => field.id === state.selectedArtifactId),
+      version?.metadata.fields.some((field) => field.id === state.selectedArtifactId) ||
+      version?.metadata.relationships.some(
+        (relationship) => relationship.id === state.selectedArtifactId,
+      ) ||
+      version?.metadata.globalValueSets.some(
+        (valueSet) => valueSet.id === state.selectedArtifactId,
+      ),
     )
   })
 

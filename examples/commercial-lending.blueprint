@@ -1,6 +1,6 @@
 {
   "format": "blueprint-studio",
-  "schemaVersion": "0.1.0",
+  "schemaVersion": "0.2.0",
   "applicationVersion": "0.1.0",
   "project": {
     "id": "project-commercial-lending",
@@ -99,9 +99,81 @@
                   "tags": [],
                   "dataClassification": "internal"
                 }
+              },
+              {
+                "id": "field-borrowing-structure-substatus",
+                "objectId": "object-borrowing-structure",
+                "origin": {
+                  "type": "created"
+                },
+                "label": "Substatus",
+                "apiName": "Substatus__c",
+                "dataType": "picklist",
+                "description": "Provides additional detail for the selected lifecycle status.",
+                "required": false,
+                "localPicklistValues": [
+                  {
+                    "id": "pv-preparation",
+                    "label": "Preparation",
+                    "apiValue": "Preparation",
+                    "active": true,
+                    "default": false
+                  },
+                  {
+                    "id": "pv-operational",
+                    "label": "Operational",
+                    "apiValue": "Operational",
+                    "active": true,
+                    "default": false
+                  }
+                ],
+                "picklistDependency": {
+                  "controllingFieldId": "field-borrowing-structure-status",
+                  "mappings": [
+                    {
+                      "controllingValue": "Draft",
+                      "dependentValues": ["Preparation"]
+                    },
+                    {
+                      "controllingValue": "Active",
+                      "dependentValues": ["Operational"]
+                    }
+                  ]
+                },
+                "governance": {
+                  "tags": [],
+                  "dataClassification": "internal"
+                }
+              },
+              {
+                "id": "field-borrowing-structure-account",
+                "objectId": "object-borrowing-structure",
+                "origin": {
+                  "type": "created"
+                },
+                "label": "Primary Account",
+                "apiName": "Primary_Account__c",
+                "dataType": "lookup",
+                "description": "Identifies the primary account for the borrowing structure.",
+                "required": true,
+                "referenceToObjectId": "object-account",
+                "governance": {
+                  "tags": [],
+                  "dataClassification": "confidential"
+                }
               }
             ],
-            "relationships": [],
+            "relationships": [
+              {
+                "id": "relationship-borrowing-account",
+                "fieldId": "field-borrowing-structure-account",
+                "parentObjectId": "object-account",
+                "childObjectId": "object-borrowing-structure",
+                "type": "lookup",
+                "relationshipName": "Borrowing_Structures",
+                "description": "Connects each borrowing structure to its primary account."
+              }
+            ],
             "globalValueSets": [
               {
                 "id": "gvs-lifecycle-status",

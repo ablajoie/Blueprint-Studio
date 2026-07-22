@@ -7,6 +7,8 @@ import type {
   UUID,
 } from './blueprint'
 import {
+  APPLICATION_VERSION,
+  SCHEMA_VERSION,
   generateApiName,
   type NewObjectInput,
   type NewProjectInput,
@@ -479,6 +481,8 @@ function getRestoredStatus(value: SolutionStatus | undefined): SolutionStatus {
 function touchBlueprint(blueprint: BlueprintFile, timestamp: string): BlueprintFile {
   return {
     ...blueprint,
+    schemaVersion: SCHEMA_VERSION,
+    applicationVersion: APPLICATION_VERSION,
     project: { ...blueprint.project, updatedAt: timestamp },
     audit: { ...blueprint.audit, updatedAt: timestamp },
   }

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { SalesforceField, SalesforceObject } from '../../domain/blueprint'
+import type { GlobalValueSet, SalesforceField, SalesforceObject } from '../../domain/blueprint'
 import { useWorkspaceStore } from '../../store/workspaceStore'
 import { CreateFieldDialog, FieldDialog } from './CreateFieldDialog'
 
@@ -24,6 +24,45 @@ const commitmentAmount: SalesforceField = {
   required: false,
   precision: 18,
   scale: 2,
+  governance: { tags: [] },
+}
+
+const statusField: SalesforceField = {
+  id: 'status-field-id',
+  objectId: facility.id,
+  origin: { type: 'created' },
+  label: 'Status',
+  apiName: 'Status__c',
+  dataType: 'picklist',
+  required: false,
+  localPicklistValues: [
+    { id: 'draft-value', label: 'Draft', apiValue: 'Draft', active: true, default: false },
+    { id: 'active-value', label: 'Active', apiValue: 'Active', active: true, default: false },
+  ],
+  governance: { tags: [] },
+}
+
+const substatusValues: GlobalValueSet = {
+  id: 'substatus-values-id',
+  label: 'Facility Substatus',
+  apiName: 'Facility_Substatus',
+  sorted: false,
+  values: [
+    {
+      id: 'preparation-value',
+      label: 'Preparation',
+      apiValue: 'Preparation',
+      active: true,
+      default: false,
+    },
+    {
+      id: 'operational-value',
+      label: 'Operational',
+      apiValue: 'Operational',
+      active: true,
+      default: false,
+    },
+  ],
   governance: { tags: [] },
 }
 
@@ -102,5 +141,45 @@ describe('CreateFieldDialog', () => {
       )
     })
     expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('connects a global value set and dependent value mappings', async () => {
+    const createField = vi.fn().mockResolvedValue(undefined)
+    useWorkspaceStore.setState({ status: 'ready', errorMessage: null, createField })
+
+    render(
+      <CreateFieldDialog
+        object={facility}
+        availableObjects={[facility]}
+        availableFields={[statusField]}
+        globalValueSets={[substatusValues]}
+        onClose={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('Field label'), { target: { value: 'Substatus' } })
+    fireEvent.change(screen.getByLabelText('Data type'), { target: { value: 'picklist' } })
+    fireEvent.change(screen.getByLabelText('Value source'), {
+      target: { value: substatusValues.id },
+    })
+    fireEvent.change(screen.getByLabelText(/Controlling field/), {
+      target: { value: statusField.id },
+    })
+    fireEvent.click(screen.getByLabelText('Draft: Preparation'))
+    fireEvent.click(screen.getByLabelText('Active: Operational'))
+    fireEvent.click(screen.getByRole('button', { name: 'Create field' }))
+
+    await waitFor(() => {
+      expect(createField).toHaveBeenCalledWith(
+        expect.objectContaining({
+          globalValueSetId: substatusValues.id,
+          controllingFieldId: statusField.id,
+          dependencyMappings: [
+            { controllingValue: 'Draft', dependentValues: ['Preparation'] },
+            { controllingValue: 'Active', dependentValues: ['Operational'] },
+          ],
+        }),
+      )
+    })
   })
 })

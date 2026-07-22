@@ -15,6 +15,8 @@ export type FieldDataType =
   | 'email'
   | 'formula'
   | 'geolocation'
+  | 'external-lookup'
+  | 'indirect-lookup'
   | 'lookup'
   | 'master-detail'
   | 'multi-select-picklist'
@@ -139,7 +141,18 @@ export interface SalesforceField {
   referenceToObjectId?: UUID
   localPicklistValues?: PicklistValue[]
   globalValueSetId?: UUID
+  picklistDependency?: PicklistDependency
   governance: GovernanceMetadata
+}
+
+export interface PicklistDependency {
+  controllingFieldId: UUID
+  mappings: PicklistDependencyMapping[]
+}
+
+export interface PicklistDependencyMapping {
+  controllingValue: string
+  dependentValues: string[]
 }
 
 export interface ObjectRelationship {

@@ -6,8 +6,9 @@
 - Solution versions
 - Discovery document
 - Objects and fields
-- Relationships
-- Global value sets
+- Relationships — implemented
+- Global value sets — implemented
+- Dependent picklist mappings — implemented
 - Basic layouts
 - Requirements and decisions
 - Configurable health rules

@@ -14,16 +14,21 @@ export function SolutionExplorer() {
   const selectedSolutionId = useWorkspaceStore((state) => state.selectedSolutionId)
   const selectedObjectId = useWorkspaceStore((state) => state.selectedObjectId)
   const activeView = useWorkspaceStore((state) => state.activeView)
+  const metadataSection = useWorkspaceStore((state) => state.metadataSection)
   const openView = useWorkspaceStore((state) => state.openView)
   const selectSolution = useWorkspaceStore((state) => state.selectSolution)
   const openObject = useWorkspaceStore((state) => state.openObject)
   const showObjectList = useWorkspaceStore((state) => state.showObjectList)
+  const showRelationships = useWorkspaceStore((state) => state.showRelationships)
+  const showGlobalValueSets = useWorkspaceStore((state) => state.showGlobalValueSets)
   const selectArtifact = useWorkspaceStore((state) => state.selectArtifact)
   const selectedSolution = blueprint?.solutions.find(
     (solution) => solution.id === selectedSolutionId,
   )
   const objects = selectedSolution?.versions.at(-1)?.metadata.objects ?? []
   const fields = selectedSolution?.versions.at(-1)?.metadata.fields ?? []
+  const relationships = selectedSolution?.versions.at(-1)?.metadata.relationships ?? []
+  const globalValueSets = selectedSolution?.versions.at(-1)?.metadata.globalValueSets ?? []
 
   return (
     <aside
@@ -94,7 +99,26 @@ export function SolutionExplorer() {
                         showObjectList()
                       }}
                     />
-                    {objects.length ? (
+                    <div className="ml-3 space-y-0.5 border-l border-slate-100 py-1 pl-2">
+                      <ExplorerSubsection
+                        label={`Objects (${String(objects.length)})`}
+                        active={activeView === 'metadata' && metadataSection === 'objects'}
+                        onClick={showObjectList}
+                      />
+                      <ExplorerSubsection
+                        label={`Relationships (${String(relationships.length)})`}
+                        active={activeView === 'metadata' && metadataSection === 'relationships'}
+                        onClick={showRelationships}
+                      />
+                      <ExplorerSubsection
+                        label={`Global Value Sets (${String(globalValueSets.length)})`}
+                        active={
+                          activeView === 'metadata' && metadataSection === 'global-value-sets'
+                        }
+                        onClick={showGlobalValueSets}
+                      />
+                    </div>
+                    {metadataSection === 'objects' && objects.length ? (
                       <ul className="ml-3 border-l border-slate-100 py-1 pl-2">
                         {objects.map((object) => (
                           <li key={object.id}>
@@ -132,6 +156,43 @@ export function SolutionExplorer() {
                         ))}
                       </ul>
                     ) : null}
+                    {metadataSection === 'relationships' && relationships.length ? (
+                      <ul className="ml-3 border-l border-slate-100 py-1 pl-2">
+                        {relationships.map((relationship) => {
+                          const field = fields.find((item) => item.id === relationship.fieldId)
+                          return (
+                            <li key={relationship.id}>
+                              <button
+                                className="w-full truncate rounded px-2 py-1 text-left text-[11px] text-slate-500 hover:bg-slate-50 hover:text-blue-800"
+                                onClick={() => {
+                                  showRelationships()
+                                  selectArtifact(relationship.id)
+                                }}
+                              >
+                                {field?.label ?? relationship.relationshipName ?? 'Relationship'}
+                              </button>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    ) : null}
+                    {metadataSection === 'global-value-sets' && globalValueSets.length ? (
+                      <ul className="ml-3 border-l border-slate-100 py-1 pl-2">
+                        {globalValueSets.map((valueSet) => (
+                          <li key={valueSet.id}>
+                            <button
+                              className="w-full truncate rounded px-2 py-1 text-left text-[11px] text-slate-500 hover:bg-slate-50 hover:text-blue-800"
+                              onClick={() => {
+                                showGlobalValueSets()
+                                selectArtifact(valueSet.id)
+                              }}
+                            >
+                              {valueSet.label}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                     {futureSections.map((section) => (
                       <div
                         key={section}
@@ -151,6 +212,29 @@ export function SolutionExplorer() {
         </>
       )}
     </aside>
+  )
+}
+
+function ExplorerSubsection({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      className={`w-full truncate rounded px-2 py-1 text-left text-xs ${
+        active
+          ? 'bg-blue-50 font-semibold text-blue-800'
+          : 'text-slate-500 hover:bg-slate-50 hover:text-blue-800'
+      }`}
+      onClick={onClick}
+    >
+      {label}
+    </button>
   )
 }
 

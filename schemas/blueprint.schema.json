@@ -332,6 +332,65 @@
       },
       "additionalProperties": false
     },
+    "picklistValue": {
+      "type": "object",
+      "required": ["id", "label", "apiValue", "active", "default"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "apiValue": {
+          "type": "string",
+          "minLength": 1
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "picklistDependency": {
+      "type": "object",
+      "required": ["controllingFieldId", "mappings"],
+      "properties": {
+        "controllingFieldId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "mappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["controllingValue", "dependentValues"],
+            "properties": {
+              "controllingValue": {
+                "type": "string",
+                "minLength": 1
+              },
+              "dependentValues": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "object": {
       "type": "object",
       "required": ["id", "origin", "label", "kind", "governance"],
@@ -415,7 +474,31 @@
           "type": "string"
         },
         "dataType": {
-          "type": "string"
+          "enum": [
+            "auto-number",
+            "checkbox",
+            "currency",
+            "date",
+            "datetime",
+            "email",
+            "formula",
+            "geolocation",
+            "external-lookup",
+            "indirect-lookup",
+            "lookup",
+            "master-detail",
+            "multi-select-picklist",
+            "number",
+            "percent",
+            "phone",
+            "picklist",
+            "rich-text",
+            "text",
+            "text-area",
+            "long-text-area",
+            "time",
+            "url"
+          ]
         },
         "description": {
           "type": "string"
@@ -454,11 +537,74 @@
         "localPicklistValues": {
           "type": "array",
           "items": {
-            "type": "object"
+            "$ref": "#/$defs/picklistValue"
           }
         },
         "globalValueSetId": {
           "$ref": "#/$defs/uuid"
+        },
+        "picklistDependency": {
+          "$ref": "#/$defs/picklistDependency"
+        },
+        "governance": {
+          "$ref": "#/$defs/governance"
+        }
+      },
+      "additionalProperties": false
+    },
+    "relationship": {
+      "type": "object",
+      "required": ["id", "fieldId", "parentObjectId", "childObjectId", "type"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "fieldId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "parentObjectId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "childObjectId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "type": {
+          "enum": ["lookup", "master-detail", "external-lookup", "indirect-lookup"]
+        },
+        "relationshipName": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "globalValueSet": {
+      "type": "object",
+      "required": ["id", "label", "sorted", "values", "governance"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "apiName": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "sorted": {
+          "type": "boolean"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/picklistValue"
+          }
         },
         "governance": {
           "$ref": "#/$defs/governance"
@@ -493,13 +639,13 @@
         "relationships": {
           "type": "array",
           "items": {
-            "type": "object"
+            "$ref": "#/$defs/relationship"
           }
         },
         "globalValueSets": {
           "type": "array",
           "items": {
-            "type": "object"
+            "$ref": "#/$defs/globalValueSet"
           }
         },
         "customLabels": {

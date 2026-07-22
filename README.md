@@ -8,7 +8,7 @@ A Salesforce professional can create a project and solution, capture discovery n
 
 ## Application foundation
 
-The repository includes a production-oriented React application with strict TypeScript, Vite, Tailwind CSS, React Router, Zustand, Dexie, ESLint, Prettier, and Vitest. The current walking skeleton includes a local project library and switcher, project and solution detail views, lifecycle management for projects, solutions, objects, and fields, and dependency-aware destructive actions. All changes persist locally and immediately update the Solution Explorer and contextual inspector.
+The repository includes a production-oriented React application with strict TypeScript, Vite, Tailwind CSS, React Router, Zustand, Dexie, ESLint, Prettier, and Vitest. The current walking skeleton includes a local project library and switcher; project, solution, object, and field lifecycle management; relationship design; global value sets; dependent picklist mappings; connected metadata checks; and dependency-aware destructive actions. All changes persist locally and immediately update the Solution Explorer and contextual inspector.
 
 ### Local setup
 
@@ -22,6 +22,8 @@ pnpm dev
 ```
 
 Clone the repository once, then use that working folder for development. Future updates can be retrieved with `git pull`; downloading a new ZIP for every version is not recommended. Vite prints the local URL after startup.
+
+On Windows systems where PowerShell blocks script wrappers, use `pnpm.cmd` in place of `pnpm` (for example, `pnpm.cmd dev`).
 
 Project data is saved automatically in the browser on the current device. Before opening a pull request, run:
 
@@ -80,6 +82,6 @@ package.json           Dependencies and development commands
 
 Run `pnpm validate:schema` to validate the example project against `schemas/blueprint.schema.json` using JSON Schema Draft 2020-12.
 
-## Current focus
+## Current capabilities
 
-Version 0.1 deliberately prioritizes Projects, Solutions, Versions, Discovery, Objects, Fields, Relationships, Global Value Sets, basic Layouts, Requirements, Decisions, and configurable Health Rules.
+Version 0.1 currently supports Projects, Solutions, Objects, Fields, Relationships, Global Value Sets, and dependent picklists. The next vertical slices add schema visualization, Discovery, basic Layouts, Requirements, Decisions, and configurable Health Rules.

@@ -20,7 +20,22 @@ export function Inspector() {
   const version = selectedSolution?.versions.at(-1)
   const field = version?.metadata.fields.find((item) => item.id === selectedArtifactId)
   const object = version?.metadata.objects.find((item) => item.id === selectedArtifactId)
-  if (!field && !object) return null
+  const relationship = version?.metadata.relationships.find(
+    (item) => item.id === selectedArtifactId,
+  )
+  const globalValueSet = version?.metadata.globalValueSets.find(
+    (item) => item.id === selectedArtifactId,
+  )
+  if (!field && !object && !relationship && !globalValueSet) return null
+  const relationshipField = version?.metadata.fields.find(
+    (item) => item.id === relationship?.fieldId,
+  )
+  const childObject = version?.metadata.objects.find(
+    (item) => item.id === relationship?.childObjectId,
+  )
+  const parentObject = version?.metadata.objects.find(
+    (item) => item.id === relationship?.parentObjectId,
+  )
 
   return (
     <aside className="overflow-auto border-l border-slate-200 bg-white p-5" aria-label="Inspector">
@@ -48,6 +63,31 @@ export function Inspector() {
             <InspectorProperty label="Required" value={field.required ? 'Yes' : 'No'} />
             <InspectorProperty label="Description" value={field.description || 'Not added yet'} />
             <InspectorProperty label="Help text" value={field.helpText || 'Not added yet'} />
+            {field.globalValueSetId ? (
+              <InspectorProperty
+                label="Value source"
+                value={
+                  version?.metadata.globalValueSets.find(
+                    (valueSet) => valueSet.id === field.globalValueSetId,
+                  )?.label ?? 'Missing global value set'
+                }
+              />
+            ) : field.localPicklistValues ? (
+              <InspectorProperty
+                label="Local values"
+                value={`${String(field.localPicklistValues.length)} defined`}
+              />
+            ) : null}
+            {field.picklistDependency ? (
+              <InspectorProperty
+                label="Controlled by"
+                value={
+                  version?.metadata.fields.find(
+                    (candidate) => candidate.id === field.picklistDependency?.controllingFieldId,
+                  )?.label ?? 'Missing controlling field'
+                }
+              />
+            ) : null}
           </dl>
         </div>
       ) : object ? (
@@ -80,6 +120,90 @@ export function Inspector() {
               </dd>
             </div>
           </dl>
+        </div>
+      ) : relationship ? (
+        <div className="mt-5">
+          <span className="inline-flex rounded-full bg-cyan-100 px-2.5 py-1 text-xs font-semibold capitalize text-cyan-900">
+            {relationship.type.replaceAll('-', ' ')}
+          </span>
+          <h2 className="mt-3 text-lg font-semibold text-slate-950">
+            {relationshipField?.label ?? relationship.relationshipName ?? 'Relationship'}
+          </h2>
+          <dl className="mt-5 space-y-4 text-sm">
+            <InspectorProperty
+              label="Child object"
+              value={childObject?.label ?? 'Missing object'}
+            />
+            <InspectorProperty
+              label="Related object"
+              value={parentObject?.label ?? 'Missing object'}
+            />
+            <InspectorProperty
+              label="Field API name"
+              monospace
+              value={relationshipField?.apiName ?? 'Not assigned'}
+            />
+            <InspectorProperty
+              label="Relationship name"
+              value={relationship.relationshipName ?? 'Not added yet'}
+            />
+            <InspectorProperty
+              label="Description"
+              value={relationship.description ?? relationshipField?.description ?? 'Not added yet'}
+            />
+          </dl>
+        </div>
+      ) : globalValueSet ? (
+        <div className="mt-5">
+          <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+            Global value set
+          </span>
+          <h2 className="mt-3 text-lg font-semibold text-slate-950">{globalValueSet.label}</h2>
+          <dl className="mt-5 space-y-4 text-sm">
+            <InspectorProperty
+              label="API name"
+              monospace
+              value={globalValueSet.apiName ?? 'Not assigned'}
+            />
+            <InspectorProperty
+              label="Values"
+              value={`${String(globalValueSet.values.length)} defined`}
+            />
+            <InspectorProperty
+              label="Used by"
+              value={`${String(
+                version?.metadata.fields.filter(
+                  (candidate) => candidate.globalValueSetId === globalValueSet.id,
+                ).length ?? 0,
+              )} fields`}
+            />
+            <InspectorProperty
+              label="Display order"
+              value={globalValueSet.sorted ? 'Alphabetical' : 'Defined order'}
+            />
+            <InspectorProperty
+              label="Description"
+              value={globalValueSet.description ?? 'Not added yet'}
+            />
+          </dl>
+          <div className="mt-5 border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Active values
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {globalValueSet.values
+                .filter((value) => value.active)
+                .map((value) => (
+                  <span
+                    key={value.id}
+                    className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700"
+                  >
+                    {value.label}
+                    {value.default ? ' · Default' : ''}
+                  </span>
+                ))}
+            </div>
+          </div>
         </div>
       ) : null}
     </aside>

@@ -15,6 +15,7 @@ describe('App', () => {
       selectedObjectId: null,
       selectedArtifactId: null,
       activeView: 'overview',
+      metadataSection: 'objects',
       errorMessage: null,
       refreshProjects: vi.fn().mockResolvedValue(undefined),
     })
@@ -47,6 +48,7 @@ describe('App', () => {
       selectedObjectId: object.objectId,
       selectedArtifactId: object.objectId,
       activeView: 'metadata',
+      metadataSection: 'objects',
       errorMessage: null,
       refreshProjects: vi.fn().mockResolvedValue(undefined),
     })
@@ -97,6 +99,7 @@ describe('App', () => {
       selectedObjectId: object.objectId,
       selectedArtifactId: null,
       activeView: 'metadata',
+      metadataSection: 'objects',
       errorMessage: null,
       refreshProjects: vi.fn().mockResolvedValue(undefined),
     })

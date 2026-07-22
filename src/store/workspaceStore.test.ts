@@ -31,6 +31,7 @@ describe('workspaceStore persistence', () => {
       selectedObjectId: null,
       selectedArtifactId: null,
       activeView: 'overview',
+      metadataSection: 'objects',
       errorMessage: null,
     })
   })
