@@ -4,7 +4,7 @@ Blueprint Studio keeps Salesforce solution intent, metadata design, governance, 
 
 ## Alpha goal
 
-A Salesforce professional can create a project and solution, capture discovery notes, define objects and fields, model relationships, create a basic layout, review design health, and export a portable `.blueprint` file.
+A Salesforce professional / Business Analyst / Solution Architect can create a project and solution, capture discovery notes, define objects and fields, model relationships, create a basic layout, review design health, and export a portable `.blueprint` file.
 
 ## Application foundation
 
