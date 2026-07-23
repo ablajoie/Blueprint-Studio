@@ -1,6 +1,6 @@
 # Blueprint Studio
 
-Blueprint Studio keeps Salesforce solution intent, metadata design, governance, security, and documentation together.
+Blueprint Studio keeps Business [Salesforce] solution intent, metadata design, governance, security, and documentation together.
 
 ## Alpha goal
 
